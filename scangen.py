@@ -276,7 +276,7 @@ class AstSquares(AstUnary):
 	def __init__(self, a):
 		super(AstSquares, self).__init__(a)
 	def gen_regex(self):
-		return '(%s)*'%self.op.gen_regex()
+		return '(%s)?'%self.op.gen_regex()
 
 class AstConcat(AstBinary):
 	def __init__(self, a, b):
@@ -295,14 +295,11 @@ class AstChoice(AstBinary):
 	def optimize(self):
 		super(AstChoice, self).optimize()
 		kids = []
-		if isinstance(self.a, AstChoice):
-			kids.extend(self.a.children())
-		else:
-			kids.append(self.a)
-		if isinstance(self.b, AstChoice):
-			kids.extend(self.b.children())
-		else:
-			kids.append(self.b)
+		for x in self.children():
+			if isinstance(x, AstChoice):
+				kids.extend(x.children())
+			else:
+				kids.append(x)
 		self.multi = kids
 
 class Production(object):
@@ -446,6 +443,8 @@ def gen_regex(p, tbl):
 	#p.root.pretty_print()
 	if p.root.check_for_cycles(tbl):
 		return
+	if isinstance(p.root, AstLink):
+		p.root = tbl[p.root.p].root
 	p.root.optimize()
 	x = p.root.gen_regex()
 	print x
