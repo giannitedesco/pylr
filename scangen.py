@@ -182,7 +182,7 @@ class AstLiteral(AstNode):
 		return self.literal
 	def check_for_cycles(self, tbl = {}, v = set()):
 		return False
-	def optimize(self):
+	def flatten(self):
 		pass
 
 class AstLink(AstNode):
@@ -211,7 +211,7 @@ class AstUnary(AstNode):
 		super(AstUnary, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s%s'%(pfx, self.__class__.__name__)
+		print '%s<%s>'%(pfx, self.__class__.__name__)
 		self.op.pretty_print(depth + 1)
 	def __str__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.op)
@@ -223,18 +223,17 @@ class AstUnary(AstNode):
 		while isinstance(self.op, AstLink):
 			self.op = tbl[self.op.p].root
 		return False
-	def optimize(self):
-		self.op.optimize()
+	def flatten(self):
+		self.op.flatten()
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
 		self.a = a
 		self.b = b
-		self.multi = None
 		super(AstBinary, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s%s'%(pfx, self.__class__.__name__)
+		print '%s<%s>'%(pfx, self.__class__.__name__)
 		for x in self.children():
 			x.pretty_print(depth + 1)
 	def check_for_cycles(self, a= {}, v = set()):
@@ -247,13 +246,10 @@ class AstBinary(AstNode):
 			self.b = tbl[self.b.p].root
 		return False
 	def children(self):
-		if self.multi is None:
-			return [self.a, self.b]
-		else:
-			return self.multi
-	def optimize(self):
-		self.a.optimize()
-		self.b.optimize()
+		return [self.a, self.b]
+	def flatten(self):
+		self.a.flatten()
+		self.b.flatten()
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -292,15 +288,8 @@ class AstChoice(AstBinary):
 	def gen_regex(self):
 		return '(%s)'%'|'.join(map(lambda x:x.gen_regex(),
 						self.children()))
-	def optimize(self):
-		super(AstChoice, self).optimize()
-		kids = []
-		for x in self.children():
-			if isinstance(x, AstChoice):
-				kids.extend(x.children())
-			else:
-				kids.append(x)
-		self.multi = kids
+	def flatten(self):
+		super(AstChoice, self).flatten()
 
 class Production(object):
 	def __init__(self, name):
@@ -443,22 +432,15 @@ def gen_regex(p, tbl):
 		return
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
-	p.root.optimize()
-	#print p.name
-	#p.root.pretty_print()
-	x = p.root.gen_regex()
-	print x
-	return x
+	p.root.flatten()
+	print 'Parse tree for: %s'%p.name
+	p.root.pretty_print()
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
 		if tbl.has_key(p.name):
 			raise Exception('%s multiply defind'%p.name)
 		tbl[p.name] = p
-		#print p.name
-		#p.root.pretty_print()
-		#print
-	#print '\n'.join(sorted(tbl.keys()))
 	return tbl
 
 def builtin_productions(tbl = {}):
