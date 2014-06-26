@@ -284,7 +284,7 @@ class AstConcat(AstBinary):
 	def gen_regex(self):
 		a = self.a.gen_regex()
 		b = self.b.gen_regex()
-		return '%s%s'%(a, b)
+		return '(%s%s)'%(a, b)
 
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
