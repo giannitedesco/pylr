@@ -169,6 +169,14 @@ class AstNode(object):
 	def __repr__(self):
 		return '%s'%(self.__class__.__name__)
 
+	# default is for leaves
+	def check_for_cycles(self, tbl = {}, v = set()):
+		return False
+	def flatten(self):
+		return self
+	def leaves(self, out = []):
+		out.append(self)
+
 class AstEpsilon(AstNode):
 	__instance = None
 	def __new__(cls, *args, **kwargs):
@@ -185,6 +193,9 @@ class AstEpsilon(AstNode):
 		return 'ε'
 	def __repr__(self):
 		return 'ε'
+	def leaves(self, out = []):
+		# don't count epsilon leaves
+		pass
 
 class AstLiteral(AstNode):
 	def __init__(self, literal):
@@ -195,10 +206,6 @@ class AstLiteral(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.literal)
-	def check_for_cycles(self, tbl = {}, v = set()):
-		return False
-	def flatten(self):
-		return self
 
 class AstSet(AstNode):
 	def __init__(self, raw_regex, esc = True):
@@ -208,10 +215,6 @@ class AstSet(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.raw_regex)
-	def check_for_cycles(self, tbl = {}, v = set()):
-		return False
-	def flatten(self):
-		return self
 
 class AstLink(AstNode):
 	def __init__(self, p):
@@ -252,6 +255,8 @@ class AstUnary(AstNode):
 	def flatten(self):
 		self.op = self.op.flatten()
 		return self
+	def leaves(self, out = []):
+		self.op.leaves(out)
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -278,6 +283,9 @@ class AstBinary(AstNode):
 		self.a = self.a.flatten()
 		self.b = self.b.flatten()
 		return self
+	def leaves(self, out = []):
+		self.a.leaves(out)
+		self.b.leaves(out)
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -313,12 +321,6 @@ class AstConcat(AstBinary):
 		super(AstConcat, self).__init__(a, b)
 
 class AstAccept(AstNode):
-	__instance = None
-	def __new__(cls, *args, **kwargs):
-		if cls.__instance is None:
-			cls.__instance = super(AstAccept, cls).__new__(cls, \
-							*args, **kwargs)
-		return cls.__instance
 	def __init__(self):
 		super(AstAccept, self).__init__()
 	def pretty_print(self, depth = 0):
@@ -482,6 +484,12 @@ def gen_dfa(p, tbl):
 	p.root = AstConcat(p.root.flatten(), AstAccept())
 	print 'Parse tree for: %s'%p.name
 	p.root.pretty_print()
+
+	out = []
+	p.root.leaves(out)
+	for (pos, x) in zip(xrange(len(out)), out):
+		x.position = pos + 1
+	print out
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
