@@ -166,6 +166,7 @@ class AstNode(object):
 		self._nullable = None
 		self._firstpos = None
 		self._lastpos = None
+		self.followpos = None
 		super(AstNode, self).__init__()
 	def __str__(self):
 		return '%s'%(self.__class__.__name__)
@@ -191,6 +192,8 @@ class AstNode(object):
 		if self._lastpos is None:
 			self._lastpos = self._calc_lastpos()
 		return self._lastpos
+	def calc_followpos(self, postbl = []):
+		self.followpos = set()
 
 class AstEpsilon(AstNode):
 	__instance = None
@@ -307,6 +310,8 @@ class AstUnary(AstNode):
 		return self
 	def leaves(self, out = []):
 		self.op.leaves(out)
+	def calc_followpos(self, postbl = []):
+		self.op.calc_followpos(postbl)
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -336,6 +341,9 @@ class AstBinary(AstNode):
 	def leaves(self, out = []):
 		self.a.leaves(out)
 		self.b.leaves(out)
+	def calc_followpos(self, postbl = []):
+		self.a.calc_followpos(postbl)
+		self.b.calc_followpos(postbl)
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -387,6 +395,10 @@ class AstConcat(AstBinary):
 			return self.a.lastpos().union(self.b.lastpos())
 		else:
 			return self.b.lastpos()
+	def calc_followpos(self, postbl = []):
+		super(AstConcat, self).calc_followpos(postbl)
+		for i in self.a.lastpos():
+			postbl[i].followpos.update(self.b.firstpos())
 
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
@@ -400,6 +412,10 @@ class AstChoice(AstBinary):
 		return self.a.firstpos().union(self.b.firstpos())
 	def _calc_lastpos(self):
 		return self.a.lastpos().union(self.b.lastpos())
+	def calc_followpos(self, postbl = []):
+		super(AstChoice, self).calc_followpos(postbl)
+		for i in self.lastpos():
+			postbl[i].followpos.update(self.firstpos())
 
 class Production(object):
 	def __init__(self, name):
@@ -551,8 +567,12 @@ def gen_dfa(p, tbl):
 	out = []
 	p.root.leaves(out)
 	for (pos, x) in zip(xrange(len(out)), out):
-		x.position = pos + 1
+		x.position = pos
+	p.root.calc_followpos(out)
 	#print p.root.nullable(), p.root.firstpos(), p.root.lastpos()
+
+	for x in out:
+		print x.followpos
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
