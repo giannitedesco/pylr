@@ -235,8 +235,8 @@ class AstBinary(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s%s'%(pfx, self.__class__.__name__)
-		self.a.pretty_print(depth + 1)
-		self.b.pretty_print(depth + 1)
+		for x in self.children():
+			x.pretty_print(depth + 1)
 	def check_for_cycles(self, a= {}, v = set()):
 		if self.a.check_for_cycles(tbl, v) or \
 				self.b.check_for_cycles(tbl, v):
@@ -439,13 +439,13 @@ def productions(fn):
 		yield p
 
 def gen_regex(p, tbl):
-	#print p.name
-	#p.root.pretty_print()
 	if p.root.check_for_cycles(tbl):
 		return
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
 	p.root.optimize()
+	#print p.name
+	#p.root.pretty_print()
 	x = p.root.gen_regex()
 	print x
 	return x
