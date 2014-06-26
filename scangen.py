@@ -182,6 +182,8 @@ class AstLiteral(AstNode):
 		return self.literal
 	def check_for_cycles(self, tbl = {}, v = set()):
 		return False
+	def optimize(self):
+		pass
 
 class AstLink(AstNode):
 	def __init__(self, p):
@@ -221,11 +223,14 @@ class AstUnary(AstNode):
 		while isinstance(self.op, AstLink):
 			self.op = tbl[self.op.p].root
 		return False
+	def optimize(self):
+		self.op.optimize()
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
 		self.a = a
 		self.b = b
+		self.multi = None
 		super(AstBinary, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
@@ -241,6 +246,14 @@ class AstBinary(AstNode):
 		while isinstance(self.b, AstLink):
 			self.b = tbl[self.b.p].root
 		return False
+	def children(self):
+		if self.multi is None:
+			return [self.a, self.b]
+		else:
+			return self.multi
+	def optimize(self):
+		self.a.optimize()
+		self.b.optimize()
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -277,9 +290,20 @@ class AstChoice(AstBinary):
 	def __init__(self, a, b):
 		super(AstChoice, self).__init__(a, b)
 	def gen_regex(self):
-		a = self.a.gen_regex()
-		b = self.b.gen_regex()
-		return '(%s|%s)'%(a, b)
+		return '(%s)'%'|'.join(map(lambda x:x.gen_regex(),
+						self.children()))
+	def optimize(self):
+		super(AstChoice, self).optimize()
+		kids = []
+		if isinstance(self.a, AstChoice):
+			kids.extend(self.a.children())
+		else:
+			kids.append(self.a)
+		if isinstance(self.b, AstChoice):
+			kids.extend(self.b.children())
+		else:
+			kids.append(self.b)
+		self.multi = kids
 
 class Production(object):
 	def __init__(self, name):
@@ -422,8 +446,10 @@ def gen_regex(p, tbl):
 	#p.root.pretty_print()
 	if p.root.check_for_cycles(tbl):
 		return
-	print p.root.gen_regex()
-	return
+	p.root.optimize()
+	x = p.root.gen_regex()
+	print x
+	return x
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
