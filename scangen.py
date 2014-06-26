@@ -167,62 +167,6 @@ class AstNode(object):
 		return '%s'%(self.__class__.__name__)
 	def __repr__(self):
 		return '%s'%(self.__class__.__name__)
-	def pretty_print(self, depth = 0):
-		pfx = ' ' * depth * 2
-		if isinstance(self, AstLiteral):
-			print '%s%s'%(pfx, self.literal)
-		if isinstance(self, AstLink):
-			print '%s-> %s'%(pfx, self.p)
-		elif isinstance(self, AstUnary):
-			print '%s%s'%(pfx, self.__class__.__name__)
-			self.op.pretty_print(depth + 1)
-		elif isinstance(self, AstBinary):
-			print '%s%s'%(pfx, self.__class__.__name__)
-			self.a.pretty_print(depth + 1)
-			self.b.pretty_print(depth + 1)
-	def gen_regex(self, tbl = {}):
-		if isinstance(self, AstLiteral):
-			return self.literal
-		elif isinstance(self, AstLink):
-			return tbl[self.p].root.gen_regex(tbl)
-		elif isinstance(self, AstSquares):
-			op = self.op.gen_regex(tbl)
-			return '(%s)*'%op
-		elif isinstance(self, AstBraces):
-			op = self.op.gen_regex(tbl)
-			return '(%s)'%op
-		elif isinstance(self, AstEllipsis):
-			op = self.op.gen_regex(tbl)
-			return '(%s)+'%op
-		elif isinstance(self, AstConcat):
-			a = self.a.gen_regex(tbl)
-			b = self.b.gen_regex(tbl)
-			return '%s%s'%(a, b)
-		elif isinstance(self, AstChoice):
-			a = self.a.gen_regex(tbl)
-			b = self.b.gen_regex(tbl)
-			return '(%s|%s)'%(a, b)
-		else:
-			print self
-			assert(False)
-	def check_for_cycles(self, tbl = {}, v = set()):
-		if isinstance(self, AstLiteral):
-			return False
-		elif isinstance(self, AstLink):
-			if self.p in v:
-				print 'CYCLE ON', self.tok.name
-				print v
-				return True
-			v.add(self.p)
-			#print self.tok.name
-			if tbl[self.p].root.check_for_cycles(tbl, v):
-				return True
-			v.remove(self.p)
-		elif isinstance(self, AstUnary):
-			return self.op.check_for_cycles(tbl)
-		elif isinstance(self, AstBinary):
-			return self.a.check_for_cycles(tbl) or \
-				self.b.check_for_cycles(tbl)
 
 class AstLiteral(AstNode):
 	def __init__(self, literal, esc = True):
@@ -231,23 +175,73 @@ class AstLiteral(AstNode):
 			literal = f.escape(literal)
 		self.literal = literal
 		super(AstLiteral, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s%s'%(pfx, self.literal)
+	def gen_regex(self):
+		return self.literal
+	def check_for_cycles(self, tbl = {}, v = set()):
+		return False
+
 class AstLink(AstNode):
 	def __init__(self, p):
 		self.p = p
 		super(AstLink, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s-> %s'%(pfx, self.p)
+	#def gen_regex(self, tbl = {}):
+	#	return tbl[self.p].root.gen_regex(tbl)
+	def check_for_cycles(self, tbl = {}, v = set()):
+		if self.p in v:
+			print 'CYCLE ON', self.tok.name
+			print v
+			return True
+		v.add(self.p)
+		#print self.tok.name
+		if tbl[self.p].root.check_for_cycles(tbl, v):
+			return True
+		v.remove(self.p)
+
 class AstUnary(AstNode):
 	def __init__(self, op):
 		self.op = op
 		super(AstUnary, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s%s'%(pfx, self.__class__.__name__)
+		self.op.pretty_print(depth + 1)
 	def __str__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.op)
 	def __repr__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.op)
+	def check_for_cycles(self, tbl = {}, v = set()):
+		if self.op.check_for_cycles(tbl, v):
+			return True
+		while isinstance(self.op, AstLink):
+			self.op = tbl[self.op.p].root
+		return False
+
 class AstBinary(AstNode):
 	def __init__(self, a, b):
 		self.a = a
 		self.b = b
 		super(AstBinary, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s%s'%(pfx, self.__class__.__name__)
+		self.a.pretty_print(depth + 1)
+		self.b.pretty_print(depth + 1)
+	def check_for_cycles(self, a= {}, v = set()):
+		if self.a.check_for_cycles(tbl, v) or \
+				self.b.check_for_cycles(tbl, v):
+			return True
+		while isinstance(self.a, AstLink):
+			self.a = tbl[self.a.p].root
+		while isinstance(self.b, AstLink):
+			self.b = tbl[self.b.p].root
+		return False
+
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
 	def __repr__(self):
@@ -256,19 +250,36 @@ class AstBinary(AstNode):
 class AstEllipsis(AstUnary):
 	def __init__(self, a):
 		super(AstEllipsis, self).__init__(a)
+	def gen_regex(self):
+		return '(%s)+'%self.op.gen_regex()
+
 class AstBraces(AstUnary):
 	def __init__(self, a):
 		super(AstBraces, self).__init__(a)
+	def gen_regex(self):
+		return '(%s)'%self.op.gen_regex()
+
 class AstSquares(AstUnary):
 	def __init__(self, a):
 		super(AstSquares, self).__init__(a)
+	def gen_regex(self):
+		return '(%s)*'%self.op.gen_regex()
 
 class AstConcat(AstBinary):
 	def __init__(self, a, b):
 		super(AstConcat, self).__init__(a, b)
+	def gen_regex(self):
+		a = self.a.gen_regex()
+		b = self.b.gen_regex()
+		return '%s%s'%(a, b)
+
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
 		super(AstChoice, self).__init__(a, b)
+	def gen_regex(self):
+		a = self.a.gen_regex()
+		b = self.b.gen_regex()
+		return '(%s|%s)'%(a, b)
 
 class Production(object):
 	def __init__(self, name):
@@ -411,7 +422,7 @@ def gen_regex(p, tbl):
 	#p.root.pretty_print()
 	if p.root.check_for_cycles(tbl):
 		return
-	print p.root.gen_regex(tbl)
+	print p.root.gen_regex()
 	return
 
 def parse_bnf(fn, tbl = {}):
