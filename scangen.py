@@ -163,6 +163,9 @@ def tokens(fn):
 
 class AstNode(object):
 	def __init__(self):
+		self._nullable = None
+		self._firstpos = None
+		self._lastpos = None
 		super(AstNode, self).__init__()
 	def __str__(self):
 		return '%s'%(self.__class__.__name__)
@@ -176,6 +179,18 @@ class AstNode(object):
 		return self
 	def leaves(self, out = []):
 		out.append(self)
+	def nullable(self):
+		if self._nullable is None:
+			self._nullable = self._calc_nullable()
+		return self._nullable
+	def firstpos(self):
+		if self._firstpos is None:
+			self._firstpos = self._calc_firstpos()
+		return self._firstpos
+	def lastpos(self):
+		if self._lastpos is None:
+			self._lastpos = self._calc_lastpos()
+		return self._lastpos
 
 class AstEpsilon(AstNode):
 	__instance = None
@@ -196,6 +211,29 @@ class AstEpsilon(AstNode):
 	def leaves(self, out = []):
 		# don't count epsilon leaves
 		pass
+	def _calc_nullable(self):
+		return True
+	def _calc_firstpos(self):
+		return set()
+	def _calc_lastpos(self):
+		return set()
+
+class AstAccept(AstNode):
+	def __init__(self):
+		super(AstAccept, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s"#"'%(pfx)
+	def __str__(self):
+		return '#'
+	def __repr__(self):
+		return '#'
+	def _calc_nullable(self):
+		return False
+	def _calc_firstpos(self):
+		return set({self.position})
+	def _calc_lastpos(self):
+		return set({self.position})
 
 class AstLiteral(AstNode):
 	def __init__(self, literal):
@@ -206,6 +244,12 @@ class AstLiteral(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.literal)
+	def _calc_nullable(self):
+		return False
+	def _calc_firstpos(self):
+		return set({self.position})
+	def _calc_lastpos(self):
+		return set({self.position})
 
 class AstSet(AstNode):
 	def __init__(self, raw_regex, esc = True):
@@ -215,6 +259,12 @@ class AstSet(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.raw_regex)
+	def _calc_nullable(self):
+		return False
+	def _calc_firstpos(self):
+		return set({self.position})
+	def _calc_lastpos(self):
+		return set({self.position})
 
 class AstLink(AstNode):
 	def __init__(self, p):
@@ -302,6 +352,12 @@ class AstEllipsis(AstUnary):
 class AstClosure(AstUnary):
 	def __init__(self, op):
 		super(AstClosure, self).__init__(op)
+	def _calc_nullable(self):
+		return True
+	def _calc_firstpos(self):
+		return self.op.firstpos()
+	def _calc_lastpos(self):
+		return self.op.lastpos()
 
 class AstBraces(AstUnary):
 	def __init__(self, op):
@@ -319,17 +375,18 @@ class AstSquares(AstUnary):
 class AstConcat(AstBinary):
 	def __init__(self, a, b):
 		super(AstConcat, self).__init__(a, b)
-
-class AstAccept(AstNode):
-	def __init__(self):
-		super(AstAccept, self).__init__()
-	def pretty_print(self, depth = 0):
-		pfx = ' ' * depth * 2
-		print '%s"#"'%(pfx)
-	def __str__(self):
-		return '#'
-	def __repr__(self):
-		return '#'
+	def _calc_nullable(self):
+		return self.a.nullable() and self.b.nullable()
+	def _calc_firstpos(self):
+		if self.a.nullable():
+			return self.a.firstpos().union(self.b.firstpos())
+		else:
+			return self.a.firstpos()
+	def _calc_lastpos(self):
+		if self.b.nullable():
+			return self.a.lastpos().union(self.b.lastpos())
+		else:
+			return self.b.lastpos()
 
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
@@ -337,6 +394,12 @@ class AstChoice(AstBinary):
 	def flatten(self):
 		super(AstChoice, self).flatten()
 		return self
+	def _calc_nullable(self):
+		return self.a.nullable() or self.b.nullable()
+	def _calc_firstpos(self):
+		return self.a.firstpos().union(self.b.firstpos())
+	def _calc_lastpos(self):
+		return self.a.lastpos().union(self.b.lastpos())
 
 class Production(object):
 	def __init__(self, name):
@@ -489,7 +552,7 @@ def gen_dfa(p, tbl):
 	p.root.leaves(out)
 	for (pos, x) in zip(xrange(len(out)), out):
 		x.position = pos + 1
-	print out
+	#print p.root.nullable(), p.root.firstpos(), p.root.lastpos()
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
