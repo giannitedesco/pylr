@@ -355,6 +355,7 @@ class AstEllipsis(AstUnary):
 		super(AstEllipsis, self).__init__(op)
 	def flatten(self):
 		# <x>... is equivalent <x>+, or <x><x>*
+		super(AstEllipsis, self).flatten()
 		return AstConcat(self.op, AstClosure(self.op))
 
 class AstClosure(AstUnary):
@@ -370,6 +371,8 @@ class AstClosure(AstUnary):
 class AstBraces(AstUnary):
 	def __init__(self, op):
 		super(AstBraces, self).__init__(op)
+	def flatten(self):
+		return self.op.flatten()
 
 class AstSquares(AstUnary):
 	def __init__(self, op):
@@ -561,8 +564,8 @@ def gen_dfa(p, tbl):
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
 	p.root = AstConcat(p.root.flatten(), AstAccept())
-	print 'Parse tree for: %s'%p.name
-	p.root.pretty_print()
+	#print 'Parse tree for: %s'%p.name
+	#p.root.pretty_print()
 
 	out = []
 	p.root.leaves(out)
@@ -571,8 +574,8 @@ def gen_dfa(p, tbl):
 	p.root.calc_followpos(out)
 	#print p.root.nullable(), p.root.firstpos(), p.root.lastpos()
 
-	for x in out:
-		print x.followpos
+	#for x in out:
+	#	print x.followpos
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
