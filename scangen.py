@@ -195,8 +195,6 @@ class AstLiteral(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.literal)
-	def gen_regex(self):
-		return self.literal
 	def check_for_cycles(self, tbl = {}, v = set()):
 		return False
 	def flatten(self):
@@ -210,8 +208,6 @@ class AstSet(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"%s"'%(pfx, self.raw_regex)
-	def gen_regex(self):
-		return self.raw_regex
 	def check_for_cycles(self, tbl = {}, v = set()):
 		return False
 	def flatten(self):
@@ -224,8 +220,6 @@ class AstLink(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s-> %s'%(pfx, self.p)
-	#def gen_regex(self, tbl = {}):
-	#	return tbl[self.p].root.gen_regex(tbl)
 	def check_for_cycles(self, tbl = {}, v = set()):
 		if self.p in v:
 			print 'CYCLE ON', self.tok.name
@@ -293,8 +287,6 @@ class AstBinary(AstNode):
 class AstEllipsis(AstUnary):
 	def __init__(self, op):
 		super(AstEllipsis, self).__init__(op)
-	def gen_regex(self):
-		return '(%s)+'%self.op.gen_regex()
 	def flatten(self):
 		# <x>... is equivalent <x>+, or <x><x>*
 		return AstConcat(self.op, AstClosure(self.op))
@@ -302,20 +294,14 @@ class AstEllipsis(AstUnary):
 class AstClosure(AstUnary):
 	def __init__(self, op):
 		super(AstClosure, self).__init__(op)
-	def gen_regex(self):
-		return '(%s)*'%self.op.gen_regex()
 
 class AstBraces(AstUnary):
 	def __init__(self, op):
 		super(AstBraces, self).__init__(op)
-	def gen_regex(self):
-		return '(%s)'%self.op.gen_regex()
 
 class AstSquares(AstUnary):
 	def __init__(self, op):
 		super(AstSquares, self).__init__(op)
-	def gen_regex(self):
-		return '(%s)?'%self.op.gen_regex()
 	def flatten(self):
 		# [ <x>... ] idiom is equivalent to <x>*
 		if isinstance(self.op, AstEllipsis):
@@ -325,10 +311,6 @@ class AstSquares(AstUnary):
 class AstConcat(AstBinary):
 	def __init__(self, a, b):
 		super(AstConcat, self).__init__(a, b)
-	def gen_regex(self):
-		a = self.a.gen_regex()
-		b = self.b.gen_regex()
-		return '(%s%s)'%(a, b)
 
 class AstAccept(AstNode):
 	__instance = None
@@ -339,8 +321,6 @@ class AstAccept(AstNode):
 		return cls.__instance
 	def __init__(self):
 		super(AstAccept, self).__init__()
-	def gen_regex(self):
-		return ''
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s"#"'%(pfx)
@@ -352,9 +332,6 @@ class AstAccept(AstNode):
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
 		super(AstChoice, self).__init__(a, b)
-	def gen_regex(self):
-		return '(%s)'%'|'.join(map(lambda x:x.gen_regex(),
-						self.children()))
 	def flatten(self):
 		super(AstChoice, self).flatten()
 		return self
@@ -497,17 +474,14 @@ def productions(fn):
 		p.eof()
 		yield p
 
-def gen_regex(p, tbl):
+def gen_dfa(p, tbl):
 	if p.root.check_for_cycles(tbl):
 		return
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
 	p.root = AstConcat(p.root.flatten(), AstAccept())
-	if True:
-		print 'Parse tree for: %s'%p.name
-		p.root.pretty_print()
-	else:
-		print p.root.gen_regex()
+	print 'Parse tree for: %s'%p.name
+	p.root.pretty_print()
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
@@ -537,5 +511,5 @@ if __name__ == '__main__':
 	tbl = {}
 	builtin_productions(tbl)
 	map(lambda x:parse_bnf(x, tbl), argv[2:])
-	gen_regex(tbl[argv[1]], tbl)
+	gen_dfa(tbl[argv[1]], tbl)
 	raise SystemExit, 0
