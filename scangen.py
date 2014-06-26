@@ -169,8 +169,10 @@ class AstNode(object):
 		return '%s'%(self.__class__.__name__)
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		if isinstance(self, AstAtom):
-			print '%s%s'%(pfx, self.tok)
+		if isinstance(self, AstLiteral):
+			print '%s%s'%(pfx, self.literal)
+		if isinstance(self, AstLink):
+			print '%s-> %s'%(pfx, self.p)
 		elif isinstance(self, AstUnary):
 			print '%s%s'%(pfx, self.__class__.__name__)
 			self.op.pretty_print(depth + 1)
@@ -179,12 +181,10 @@ class AstNode(object):
 			self.a.pretty_print(depth + 1)
 			self.b.pretty_print(depth + 1)
 	def gen_regex(self, tbl = {}):
-		if isinstance(self, AstAtom):
-			if isinstance(self.tok, TokLiteral):
-				f = re_escape()
-				return f.escape(self.tok.name)
-			else:
-				return tbl[self.tok.name].root.gen_regex(tbl)
+		if isinstance(self, AstLiteral):
+			return self.literal
+		elif isinstance(self, AstLink):
+			return tbl[self.p].root.gen_regex(tbl)
 		elif isinstance(self, AstSquares):
 			op = self.op.gen_regex(tbl)
 			return '(%s)*'%op
@@ -206,28 +206,35 @@ class AstNode(object):
 			print self
 			assert(False)
 	def check_for_cycles(self, tbl = {}, v = set()):
-		if isinstance(self, AstAtom):
-			if isinstance(self.tok, TokLiteral):
-				return False
-			if self.tok.name in v:
+		if isinstance(self, AstLiteral):
+			return False
+		elif isinstance(self, AstLink):
+			if self.p in v:
 				print 'CYCLE ON', self.tok.name
 				print v
 				return True
-			v.add(self.tok.name)
+			v.add(self.p)
 			#print self.tok.name
-			if tbl[self.tok.name].root.check_for_cycles(tbl, v):
+			if tbl[self.p].root.check_for_cycles(tbl, v):
 				return True
-			v.remove(self.tok.name)
+			v.remove(self.p)
 		elif isinstance(self, AstUnary):
 			return self.op.check_for_cycles(tbl)
 		elif isinstance(self, AstBinary):
 			return self.a.check_for_cycles(tbl) or \
 				self.b.check_for_cycles(tbl)
 
-class AstAtom(AstNode):
-	def __init__(self, tok):
-		self.tok = tok
-		super(AstAtom, self).__init__()
+class AstLiteral(AstNode):
+	def __init__(self, literal, esc = True):
+		if esc:
+			f = re_escape()
+			literal = f.escape(literal)
+		self.literal = literal
+		super(AstLiteral, self).__init__()
+class AstLink(AstNode):
+	def __init__(self, p):
+		self.p = p
+		super(AstLink, self).__init__()
 class AstUnary(AstNode):
 	def __init__(self, op):
 		self.op = op
@@ -320,7 +327,12 @@ class Production(object):
 		if self.natom > 1:
 			self.natom -= 1
 			self.__binop(AstConcat)
-		self.stack.append(AstAtom(tok))
+		if isinstance(tok, TokIdentifier):
+			self.stack.append(AstLink(tok.name))
+		elif isinstance(tok, TokLiteral):
+			self.stack.append(AstLiteral(tok.name))
+		else:
+			assert(False)
 		self.natom += 1
 
 	def __ellipsis(self, tok):
@@ -373,7 +385,7 @@ class Production(object):
 			self.root = self.stack.pop()
 		else:
 			assert(self.__last is not None)
-			self.root = AstAtom(TokLiteral(self.__last.confus))
+			self.root = AstLiteral(self.__last.confus)
 
 	def __str__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.name)
@@ -420,7 +432,7 @@ def builtin_productions(tbl = {}):
 	}
 	for k, v in d.items():
 		p = Production(k)
-		p.root = AstAtom(TokLiteral(v))
+		p.root = AstLiteral(v, esc = False)
 		tbl[p.name] = p
 	return tbl
 
