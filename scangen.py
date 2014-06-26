@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # vim: set fileencoding=utf8 :
 
+from pydot import Node, Edge, Dot, quote_if_necessary
+
 def read_file(fn):
 	f = open(fn)
 	while True:
@@ -558,6 +560,28 @@ def productions(fn):
 		p.eof()
 		yield p
 
+def dump_graph(fn, postbl, initial):
+	d = Dot(quote_if_necessary("DFA"), rankdir='LR')
+	d.set_node_defaults(shape='circle')
+
+	for x in postbl:
+		n = Node(str(x.position))
+		if isinstance(x, AstAccept):
+			n.set_shape('doublecircle')
+			n.set_color('green')
+		elif x.position in initial:
+			n.set_shape('doublecircle')
+			n.set_color('blue')
+		d.add_node(n)
+
+		for opos in x.followpos:
+			label = quote_if_necessary(x.literal)
+			e = Edge(str(x.position), str(opos), label=label)
+			d.add_edge(e)
+
+	
+	d.write(fn, 'raw')
+
 def gen_dfa(p, tbl):
 	if p.root.check_for_cycles(tbl):
 		return
@@ -567,15 +591,14 @@ def gen_dfa(p, tbl):
 	#print 'Parse tree for: %s'%p.name
 	#p.root.pretty_print()
 
-	out = []
-	p.root.leaves(out)
-	for (pos, x) in zip(xrange(len(out)), out):
+	postbl = []
+	p.root.leaves(postbl)
+	for (pos, x) in zip(xrange(len(postbl)), postbl):
 		x.position = pos
-	p.root.calc_followpos(out)
+	p.root.calc_followpos(postbl)
 	#print p.root.nullable(), p.root.firstpos(), p.root.lastpos()
 
-	#for x in out:
-	#	print x.followpos
+	dump_graph('dfa.dot', postbl, p.root.firstpos())
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
