@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # vim: set fileencoding=utf8 :
 
-from pydot import Node, Edge, Dot, quote_if_necessary
+from pydot import quote_if_necessary
 
 def read_file(fn):
 	f = open(fn)
@@ -260,6 +260,7 @@ class AstSet(AstNode):
 	def __init__(self, raw_regex, esc = True):
 		# Allow raw regex expressions here
 		self.raw_regex = raw_regex
+		self.literal = raw_regex
 		super(AstSet, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
@@ -560,27 +561,47 @@ def productions(fn):
 		p.eof()
 		yield p
 
+class Graph(object):
+	def __init__(self, name, fn):
+		f = open(fn, 'w')
+		f.write('digraph %s {\n'%quote_if_necessary(name))
+		f.write('\tgraph[rankdir=LR]\n')
+		f.write('\tnode [shape = circle];\n')
+		f.write('\n')
+		self.f = f
+		super(Graph, self).__init__()
+	def add_node(self, n, **kwargs):
+		n = quote_if_necessary(n)
+		a = ' '.join(map(lambda (k,v):'%s=%s'%(k, quote_if_necessary(v)),
+				kwargs.items()))
+		self.f.write('%s [label=%s %s];\n'%(n,n,a))
+	def add_edge(self, pre, post, label):
+		pre = quote_if_necessary(pre)
+		post = quote_if_necessary(post)
+		if label == '"':
+			label = '\\"'
+		label = quote_if_necessary(label)
+		self.f.write('%s -> %s [label=%s];\n'%(pre, post, label))
+	def __del__(self):
+		print 'finishing graph'
+		self.f.write('}\n')
+		self.f.close()
+
 def dump_graph(fn, postbl, initial):
-	d = Dot(quote_if_necessary("DFA"), rankdir='LR')
-	d.set_node_defaults(shape='circle')
+	g = Graph('DFA', 'dfa.dot')
 
 	for x in postbl:
-		n = Node(str(x.position))
+		kwargs = {}
 		if isinstance(x, AstAccept):
-			n.set_shape('doublecircle')
-			n.set_color('green')
+			kwargs['shape'] = 'doublecircle'
+			kwargs['color'] = 'green'
 		elif x.position in initial:
-			n.set_shape('doublecircle')
-			n.set_color('blue')
-		d.add_node(n)
+			kwargs['shape'] = 'doublecircle'
+			kwargs['color'] = 'blue'
+		g.add_node(str(x.position), **kwargs)
 
 		for opos in x.followpos:
-			label = quote_if_necessary(x.literal)
-			e = Edge(str(x.position), str(opos), label=label)
-			d.add_edge(e)
-
-	
-	d.write(fn, 'raw')
+			g.add_edge(str(x.position), str(opos), x.literal)
 
 def gen_dfa(p, tbl):
 	if p.root.check_for_cycles(tbl):
@@ -593,6 +614,7 @@ def gen_dfa(p, tbl):
 
 	postbl = []
 	p.root.leaves(postbl)
+	print 'creating DFA with %d states'%len(postbl)
 	for (pos, x) in zip(xrange(len(postbl)), postbl):
 		x.position = pos
 	p.root.calc_followpos(postbl)
