@@ -330,6 +330,25 @@ class AstConcat(AstBinary):
 		b = self.b.gen_regex()
 		return '(%s%s)'%(a, b)
 
+class AstAccept(AstNode):
+	__instance = None
+	def __new__(cls, *args, **kwargs):
+		if cls.__instance is None:
+			cls.__instance = super(AstAccept, cls).__new__(cls, \
+							*args, **kwargs)
+		return cls.__instance
+	def __init__(self):
+		super(AstAccept, self).__init__()
+	def gen_regex(self):
+		return ''
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s"#"'%(pfx)
+	def __str__(self):
+		return '#'
+	def __repr__(self):
+		return '#'
+
 class AstChoice(AstBinary):
 	def __init__(self, a, b):
 		super(AstChoice, self).__init__(a, b)
@@ -483,7 +502,7 @@ def gen_regex(p, tbl):
 		return
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
-	p.root = p.root.flatten()
+	p.root = AstConcat(p.root.flatten(), AstAccept())
 	if True:
 		print 'Parse tree for: %s'%p.name
 		p.root.pretty_print()
