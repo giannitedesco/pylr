@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# vim: set fileencoding=utf8 :
 
 def read_file(fn):
 	f = open(fn)
@@ -168,22 +169,53 @@ class AstNode(object):
 	def __repr__(self):
 		return '%s'%(self.__class__.__name__)
 
+class AstEpsilon(AstNode):
+	__instance = None
+	def __new__(cls, *args, **kwargs):
+		if cls.__instance is None:
+			cls.__instance = super(AstEpsilon, cls).__new__(cls, \
+							*args, **kwargs)
+		return cls.__instance
+	def __init__(self):
+		super(AstEpsilon, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s"ε"'%(pfx)
+	def __str__(self):
+		return 'ε'
+	def __repr__(self):
+		return 'ε'
+
 class AstLiteral(AstNode):
-	def __init__(self, literal, esc = True):
-		if esc:
-			f = re_escape()
-			literal = f.escape(literal)
-		self.literal = literal
+	def __init__(self, literal):
+		# escape any regex characters here
+		f = re_escape()
+		self.literal = f.escape(literal)
 		super(AstLiteral, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s%s'%(pfx, self.literal)
+		print '%s"%s"'%(pfx, self.literal)
 	def gen_regex(self):
 		return self.literal
 	def check_for_cycles(self, tbl = {}, v = set()):
 		return False
 	def flatten(self):
-		pass
+		return self
+
+class AstSet(AstNode):
+	def __init__(self, raw_regex, esc = True):
+		# Allow raw regex expressions here
+		self.raw_regex = raw_regex
+		super(AstSet, self).__init__()
+	def pretty_print(self, depth = 0):
+		pfx = ' ' * depth * 2
+		print '%s"%s"'%(pfx, self.raw_regex)
+	def gen_regex(self):
+		return self.raw_regex
+	def check_for_cycles(self, tbl = {}, v = set()):
+		return False
+	def flatten(self):
+		return self
 
 class AstLink(AstNode):
 	def __init__(self, p):
@@ -224,7 +256,8 @@ class AstUnary(AstNode):
 			self.op = tbl[self.op.p].root
 		return False
 	def flatten(self):
-		self.op.flatten()
+		self.op = self.op.flatten()
+		return self
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -248,8 +281,9 @@ class AstBinary(AstNode):
 	def children(self):
 		return [self.a, self.b]
 	def flatten(self):
-		self.a.flatten()
-		self.b.flatten()
+		self.a = self.a.flatten()
+		self.b = self.b.flatten()
+		return self
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -257,22 +291,36 @@ class AstBinary(AstNode):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
 
 class AstEllipsis(AstUnary):
-	def __init__(self, a):
-		super(AstEllipsis, self).__init__(a)
+	def __init__(self, op):
+		super(AstEllipsis, self).__init__(op)
 	def gen_regex(self):
 		return '(%s)+'%self.op.gen_regex()
+	def flatten(self):
+		# <x>... is equivalent <x>+, or <x><x>*
+		return AstConcat(self.op, AstClosure(self.op))
+
+class AstClosure(AstUnary):
+	def __init__(self, op):
+		super(AstClosure, self).__init__(op)
+	def gen_regex(self):
+		return '(%s)*'%self.op.gen_regex()
 
 class AstBraces(AstUnary):
-	def __init__(self, a):
-		super(AstBraces, self).__init__(a)
+	def __init__(self, op):
+		super(AstBraces, self).__init__(op)
 	def gen_regex(self):
 		return '(%s)'%self.op.gen_regex()
 
 class AstSquares(AstUnary):
-	def __init__(self, a):
-		super(AstSquares, self).__init__(a)
+	def __init__(self, op):
+		super(AstSquares, self).__init__(op)
 	def gen_regex(self):
 		return '(%s)?'%self.op.gen_regex()
+	def flatten(self):
+		# [ <x>... ] idiom is equivalent to <x>*
+		if isinstance(self.op, AstEllipsis):
+			return AstClosure(self.op.op.flatten())
+		return AstChoice(self.op.flatten(), AstEpsilon())
 
 class AstConcat(AstBinary):
 	def __init__(self, a, b):
@@ -290,6 +338,7 @@ class AstChoice(AstBinary):
 						self.children()))
 	def flatten(self):
 		super(AstChoice, self).flatten()
+		return self
 
 class Production(object):
 	def __init__(self, name):
@@ -421,6 +470,8 @@ def productions(fn):
 				p.eof()
 				yield p
 			p = Production(t.name)
+		elif isinstance(t, TokLiteral):
+			map(lambda x:p.feed(TokLiteral(x)), t.name)
 		else:
 			p.feed(t)
 	if p is not None:
@@ -432,9 +483,12 @@ def gen_regex(p, tbl):
 		return
 	if isinstance(p.root, AstLink):
 		p.root = tbl[p.root.p].root
-	p.root.flatten()
-	print 'Parse tree for: %s'%p.name
-	p.root.pretty_print()
+	p.root = p.root.flatten()
+	if True:
+		print 'Parse tree for: %s'%p.name
+		p.root.pretty_print()
+	else:
+		print p.root.gen_regex()
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
@@ -450,7 +504,7 @@ def builtin_productions(tbl = {}):
 	}
 	for k, v in d.items():
 		p = Production(k)
-		p.root = AstLiteral(v, esc = False)
+		p.root = AstSet(v)
 		tbl[p.name] = p
 	return tbl
 
