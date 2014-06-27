@@ -188,11 +188,11 @@ class AstNode(object):
 		return self._nullable
 	def firstpos(self):
 		if self._firstpos is None:
-			self._firstpos = self._calc_firstpos()
+			self._firstpos = frozenset(self._calc_firstpos())
 		return self._firstpos
 	def lastpos(self):
 		if self._lastpos is None:
-			self._lastpos = self._calc_lastpos()
+			self._lastpos = frozenset(self._calc_lastpos())
 		return self._lastpos
 	def calc_followpos(self, postbl = []):
 		self.followpos = set()
@@ -587,40 +587,94 @@ class Graph(object):
 		self.f.write('}\n')
 		self.f.close()
 
-def dump_graph(fn, postbl, initial):
-	g = Graph('DFA', 'dfa.dot')
+class DFA(object):
+	def __init__(self, p, tbl):
+		# Check for cycles and resolve all production references
+		if p.root.check_for_cycles(tbl):
+			return
 
-	for x in postbl:
-		kwargs = {}
-		if isinstance(x, AstAccept):
-			kwargs['shape'] = 'doublecircle'
-			kwargs['color'] = 'green'
-		elif x.position in initial:
-			kwargs['shape'] = 'doublecircle'
-			kwargs['color'] = 'blue'
-		g.add_node(str(x.position), **kwargs)
+		# Don't let the root be a reference FIXME
+		if isinstance(p.root, AstLink):
+			p.root = tbl[p.root.p].root
 
-		for opos in x.followpos:
-			g.add_edge(str(x.position), str(opos), x.literal)
+		# Flatten the tree and add the end-of-pattern marker
+		p.root = AstConcat(p.root.flatten(), AstAccept())
 
-def gen_dfa(p, tbl):
-	if p.root.check_for_cycles(tbl):
-		return
-	if isinstance(p.root, AstLink):
-		p.root = tbl[p.root.p].root
-	p.root = AstConcat(p.root.flatten(), AstAccept())
-	#print 'Parse tree for: %s'%p.name
-	#p.root.pretty_print()
+		# Display the flattened parse tree
+		print 'Parse tree for: %s'%p.name
+		p.root.pretty_print()
 
-	postbl = []
-	p.root.leaves(postbl)
-	print 'creating DFA with %d states'%len(postbl)
-	for (pos, x) in zip(xrange(len(postbl)), postbl):
-		x.position = pos
-	p.root.calc_followpos(postbl)
-	#print p.root.nullable(), p.root.firstpos(), p.root.lastpos()
+		# Construct the position table
+		postbl = []
+		p.root.leaves(postbl)
+		for (pos, x) in zip(xrange(len(postbl)), postbl):
+			x.position = pos
 
-	dump_graph('dfa.dot', postbl, p.root.firstpos())
+		# Calculate the followpos function
+		p.root.calc_followpos(postbl)
+
+		initial = p.root.firstpos().union(frozenset({}))
+		states = set()
+		Dstate = set({initial})
+		Dtrans = {}
+
+		while len(Dstate):
+			S = Dstate.pop()
+			states.add(S) # mark
+
+			#print 'S = %s'%S
+			S2 = filter(lambda x:isinstance(postbl[x],
+					AstLiteral), S)
+			a = map(lambda x:(postbl[x].literal, x), S2)
+			s = {}
+			for k, v in a:
+				s.setdefault(k, set()).add(v)
+
+			for k, v in s.items():
+				U = set()
+				for x in v:
+					U.update(postbl[x].followpos)
+				U = frozenset(U)
+
+				if U not in Dstate and U not in states:
+					Dstate.add(U)
+
+				Dtrans[S,k] = U
+
+		self.states = list(states)
+		self.Dtrans = Dtrans
+		self.initial = initial
+
+		for x in self.states:
+			if p.root.b.position in x:
+				self.final = x
+				break
+		print 'DFA has %u states and %u transitions'%(len(self.states),
+							len(self.Dtrans))
+		super(DFA, self).__init__()
+
+	def dump_graph(self, fn):
+		g = Graph('DFA', 'dfa.dot')
+
+		def state_name(x):
+			n = list(x)
+			n.sort()
+			return ''.join(map(str, n))
+
+		for (x,i) in zip(self.states, xrange(len(self.states))):
+			kwargs = {}
+			if x == self.final:
+				kwargs['shape'] = 'doublecircle'
+				kwargs['color'] = 'red'
+			if x == self.initial:
+				kwargs['color'] = 'blue'
+
+			label = state_name(x)
+			g.add_node(label, **kwargs)
+
+		for ((pre,sym),post) in self.Dtrans.items():
+			g.add_edge(state_name(pre),
+				state_name(post), sym)
 
 def parse_bnf(fn, tbl = {}):
 	for p in productions(fn):
@@ -650,5 +704,6 @@ if __name__ == '__main__':
 	tbl = {}
 	builtin_productions(tbl)
 	map(lambda x:parse_bnf(x, tbl), argv[2:])
-	gen_dfa(tbl[argv[1]], tbl)
+	dfa = DFA(tbl[argv[1]], tbl)
+	dfa.dump_graph('dfa.dot')
 	raise SystemExit, 0
