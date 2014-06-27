@@ -629,40 +629,48 @@ class CFile(file):
 		else:
 			t = 'unsigned int'
 		self.write('static const %s '%t)
-		self.write('trans[%u][0x100] = {\n'%len(dfa.states))
+		self.write('trans[%u][0x100] = {\n'%(len(dfa.states) + 1))
 		for pre, d in dfa.trans.items():
-			self.write('\t[ %u ] = {\n'%pre)
+			self.write('\t[ %u ] = {\n'%(pre + 1))
 			for sym, post in sorted(d.items()):
-				self.write('\t\t[\'%s\'] = %s,\n'%(sym, post))
+				self.write('\t\t[\'%s\'] = %u,\n'%\
+						(sym, post + 1))
 			self.write('\t},\n')
 		self.write('};\n\n')
 	def state_table(self, dfa):
+		if len(dfa.states) < 2**8:
+			t = 'uint8_t'
+		else:
+			t = 'unsigned int'
 		self.write('static const struct {\n')
 		self.write('\tuint8_t accept;\n')
-		self.write('}state[%u] = {\n'%len(dfa.states))
+		self.write('}state[%u] = {\n'%(len(dfa.states) + 1))
 		for (x, i) in dfa.states.items():
-			self.write('\t[ %u ] = {\n'%i)
+			self.write('\t[ %u ] = {\n'%(i + 1))
 			self.write('\t\t.accept = %u,\n'%(int(x == dfa.final)))
 			self.write('\t},\n')
 		self.write('};\n\n')
+
+		self.write('static const %s initial_state = %s;\n\n'%\
+				(t, dfa.states[dfa.initial] + 1))
 	def __del__(self):
 		self.close()
 
 class DFA(object):
 	def __init__(self, p, tbl):
+		# Don't let the root be a reference FIXME
+		while isinstance(p.root, AstLink):
+			p.root = tbl[p.root.p].root
+
 		# Check for cycles and resolve all production references
 		if p.root.check_for_cycles(tbl):
 			return
-
-		# Don't let the root be a reference FIXME
-		if isinstance(p.root, AstLink):
-			p.root = tbl[p.root.p].root
 
 		# Flatten the tree and add the end-of-pattern marker
 		p.root = AstConcat(p.root.flatten(), AstAccept())
 
 		# Display the flattened parse tree
-		print 'Parse tree for: %s'%p.name
+		#print 'Parse tree for: %s'%p.name
 		#p.root.pretty_print()
 
 		# Construct the position table
@@ -738,12 +746,12 @@ class DFA(object):
 				kwargs['color'] = 'red'
 			if x == self.initial:
 				kwargs['color'] = 'blue'
-			kwargs['label'] = str(i)
-			g.add_node(str(i), **kwargs)
+			kwargs['label'] = str(i + 1)
+			g.add_node(str(i + 1), **kwargs)
 
 		for pre, d in dfa.trans.items():
 			for sym, post in sorted(d.items()):
-				g.add_edge(pre, post, sym)
+				g.add_edge(pre + 1, post + 1, sym)
 
 	def dump_c(self, cfn, hfn):
 		c = CFile(cfn, incl=[hfn])
