@@ -602,7 +602,7 @@ class DFA(object):
 
 		# Display the flattened parse tree
 		print 'Parse tree for: %s'%p.name
-		p.root.pretty_print()
+		#p.root.pretty_print()
 
 		# Construct the position table
 		postbl = []
@@ -654,12 +654,12 @@ class DFA(object):
 		super(DFA, self).__init__()
 
 	def dump_graph(self, fn):
-		g = Graph('DFA', 'dfa.dot')
+		g = Graph('DFA', fn)
 
 		def state_name(x):
 			n = list(x)
 			n.sort()
-			return ''.join(map(str, n))
+			return '_'.join(map(str, n))
 
 		for (x,i) in zip(self.states, xrange(len(self.states))):
 			kwargs = {}
@@ -668,9 +668,8 @@ class DFA(object):
 				kwargs['color'] = 'red'
 			if x == self.initial:
 				kwargs['color'] = 'blue'
-
-			label = state_name(x)
-			g.add_node(label, **kwargs)
+			kwargs['label'] = str(i)
+			g.add_node(state_name(x), **kwargs)
 
 		for ((pre,sym),post) in self.Dtrans.items():
 			g.add_edge(state_name(pre),
