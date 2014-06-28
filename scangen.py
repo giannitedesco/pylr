@@ -259,22 +259,6 @@ class AstLiteral(AstNode):
 	def _calc_lastpos(self):
 		return set({self.position})
 
-class AstSet(AstNode):
-	def __init__(self, raw_regex, esc = True):
-		# Allow raw regex expressions here
-		self.raw_regex = raw_regex
-		self.literal = raw_regex
-		super(AstSet, self).__init__()
-	def pretty_print(self, depth = 0):
-		pfx = ' ' * depth * 2
-		print '%s"%s"'%(pfx, self.raw_regex)
-	def _calc_nullable(self):
-		return False
-	def _calc_firstpos(self):
-		return set({self.position})
-	def _calc_lastpos(self):
-		return set({self.position})
-
 class AstLink(AstNode):
 	def __init__(self, p):
 		self.p = p
@@ -581,6 +565,9 @@ class Graph(object):
 	def add_edge(self, pre, post, label):
 		pre = quote_if_necessary(pre)
 		post = quote_if_necessary(post)
+		if label == ' ':
+			self.f.write('%s -> %s [label="SPACE" color=red];\n'%(pre, post))
+			return
 		if label == '"':
 			label = '\\"'
 		label = quote_if_necessary(label)
@@ -657,32 +644,46 @@ class CFile(file):
 		self.close()
 
 class DFA(object):
-	def __init__(self, p, tbl):
+	def graph_followpos(self, postbl, initials):
+		g = Graph('NFA', 'nfa.dot')
+		for i, p in zip(xrange(len(postbl)), postbl):
+			kwargs = {}
+			if isinstance(p, AstAccept):
+				kwargs['shape'] = 'doublecircle'
+				kwargs['color'] = 'red'
+			if i in initials:
+				kwargs['color'] = 'blue'
+			g.add_node(str(i), **kwargs)
+			for f in p.followpos:
+				g.add_edge(str(i), str(f),
+						p.literal)
+	def __init__(self, r, tbl):
 		# Don't let the root be a reference FIXME
-		while isinstance(p.root, AstLink):
-			p.root = tbl[p.root.p].root
+		while isinstance(r.root, AstLink):
+			r.root = tbl[r.root.p].root
 
 		# Check for cycles and resolve all production references
-		if p.root.check_for_cycles(tbl):
+		if r.root.check_for_cycles(tbl):
 			return
 
 		# Flatten the tree and add the end-of-pattern marker
-		p.root = AstConcat(p.root.flatten(), AstAccept())
+		r.root = AstConcat(r.root.flatten(), AstAccept())
 
 		# Display the flattened parse tree
-		#print 'Parse tree for: %s'%p.name
-		#p.root.pretty_print()
+		print 'Parse tree for: %s'%r.name
+		r.root.pretty_print()
 
 		# Construct the position table
 		postbl = []
-		p.root.leaves(postbl)
+		r.root.leaves(postbl)
 		for (pos, x) in zip(xrange(len(postbl)), postbl):
 			x.position = pos
 
 		# Calculate the followpos function
-		p.root.calc_followpos(postbl)
+		r.root.calc_followpos(postbl)
+		self.graph_followpos(postbl, r.root.firstpos())
 
-		initial = p.root.firstpos().union(frozenset({}))
+		initial = r.root.firstpos().union(frozenset({}))
 		states = {}
 		Dstate = set({initial})
 		Dtrans = {}
@@ -697,21 +698,21 @@ class DFA(object):
 			#print 'S = %s'%S
 			S2 = filter(lambda x:isinstance(postbl[x],
 					AstLiteral), S)
-			a = map(lambda x:(postbl[x].literal, x), S2)
+			SS = map(lambda x:(postbl[x].literal, x), S2)
 			s = {}
-			for k, v in a:
-				s.setdefault(k, set()).add(v)
+			for a, p in SS:
+				s.setdefault(a, set()).add(p)
 
-			for k, v in s.items():
+			for a, v in s.items():
 				U = set()
-				for x in v:
-					U.update(postbl[x].followpos)
+				for p in v:
+					U.update(postbl[p].followpos)
 				U = frozenset(U)
 
 				if U not in Dstate and U not in states:
 					Dstate.add(U)
 
-				Dtrans[S,k] = U
+				Dtrans[S,a] = U
 
 		# Re-number transitions
 		trans = {}
@@ -724,7 +725,7 @@ class DFA(object):
 
 		# TODO: forget about state sets and use renumbering
 		for x in states.keys():
-			if p.root.b.position in x:
+			if r.root.b.position in x:
 				final = x
 
 		self.initial = initial
@@ -769,11 +770,12 @@ def parse_bnf(fn, tbl = {}):
 def builtin_productions(tbl = {}):
 	d = {
 		'__lf__': '\\n',
-		'__isspace__': '\\s'
+		'__isspace__': '\\s',
+		'__space__': ' ',
 	}
 	for k, v in d.items():
 		p = Production(k)
-		p.root = AstSet(v)
+		p.root = AstLiteral(v)
 		tbl[p.name] = p
 	return tbl
 
