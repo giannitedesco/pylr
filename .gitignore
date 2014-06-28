@@ -1,1 +1,6 @@
 *.pyc
+*.dot
+*.ps
+*.o
+.*.d
+test
