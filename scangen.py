@@ -171,14 +171,10 @@ class AstNode(object):
 		self._lastpos = None
 		self.followpos = None
 		super(AstNode, self).__init__()
-	def __str__(self):
-		return '%s'%(self.__class__.__name__)
-	def __repr__(self):
-		return '%s'%(self.__class__.__name__)
 
 	# default is for leaves
-	def check_for_cycles(self, tbl = {}, v = set()):
-		return False
+	def resolve_links(self, tbl = {}, v = set()):
+		return self
 	def flatten(self):
 		return self
 	def leaves(self, out = []):
@@ -266,16 +262,14 @@ class AstLink(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s-> %s'%(pfx, self.p)
-	def check_for_cycles(self, tbl = {}, v = set()):
+	def resolve_links(self, tbl = {}, v = set()):
 		if self.p in v:
-			print 'CYCLE ON', self.tok.name
-			print v
-			return True
+			raise Exception('Cycle on %s'%self.p)
 		v.add(self.p)
-		#print self.tok.name
-		if tbl[self.p].root.check_for_cycles(tbl, v):
-			return True
+		#print 'Resolving', self.p
+		ret = tbl[self.p].root.resolve_links(tbl, v)
 		v.remove(self.p)
+		return ret;
 
 class AstUnary(AstNode):
 	def __init__(self, op):
@@ -289,12 +283,9 @@ class AstUnary(AstNode):
 		return '%s(%s)'%(self.__class__.__name__, self.op)
 	def __repr__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.op)
-	def check_for_cycles(self, tbl = {}, v = set()):
-		if self.op.check_for_cycles(tbl, v):
-			return True
-		while isinstance(self.op, AstLink):
-			self.op = tbl[self.op.p].root
-		return False
+	def resolve_links(self, tbl = {}, v = set()):
+		self.op = self.op.resolve_links(tbl, v)
+		return self
 	def flatten(self):
 		self.op = self.op.flatten()
 		return self
@@ -311,19 +302,12 @@ class AstBinary(AstNode):
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
 		print '%s<%s>'%(pfx, self.__class__.__name__)
-		for x in self.children():
+		for x in [self.a, self.b]:
 			x.pretty_print(depth + 1)
-	def check_for_cycles(self, a= {}, v = set()):
-		if self.a.check_for_cycles(tbl, v) or \
-				self.b.check_for_cycles(tbl, v):
-			return True
-		while isinstance(self.a, AstLink):
-			self.a = tbl[self.a.p].root
-		while isinstance(self.b, AstLink):
-			self.b = tbl[self.b.p].root
-		return False
-	def children(self):
-		return [self.a, self.b]
+	def resolve_links(self, tbl = {}, v = set()):
+		self.a = self.a.resolve_links(tbl, v)
+		self.b = self.b.resolve_links(tbl, v)
+		return self
 	def flatten(self):
 		self.a = self.a.flatten()
 		self.b = self.b.flatten()
@@ -357,6 +341,10 @@ class AstClosure(AstUnary):
 		return self.op.firstpos()
 	def _calc_lastpos(self):
 		return self.op.lastpos()
+	def calc_followpos(self, postbl = []):
+		super(AstClosure, self).calc_followpos(postbl)
+		for i in self.lastpos():
+			postbl[i].followpos.update(self.firstpos())
 
 class AstBraces(AstUnary):
 	def __init__(self, op):
@@ -405,10 +393,6 @@ class AstChoice(AstBinary):
 		return self.a.firstpos().union(self.b.firstpos())
 	def _calc_lastpos(self):
 		return self.a.lastpos().union(self.b.lastpos())
-	def calc_followpos(self, postbl = []):
-		super(AstChoice, self).calc_followpos(postbl)
-		for i in self.lastpos():
-			postbl[i].followpos.update(self.firstpos())
 
 class Production(object):
 	def __init__(self, name):
@@ -663,8 +647,7 @@ class DFA(object):
 			r.root = tbl[r.root.p].root
 
 		# Check for cycles and resolve all production references
-		if r.root.check_for_cycles(tbl):
-			return
+		r.root = r.root.resolve_links(tbl)
 
 		# Flatten the tree and add the end-of-pattern marker
 		r.root = AstConcat(r.root.flatten(), AstAccept())
