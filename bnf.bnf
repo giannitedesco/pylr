@@ -1,0 +1,192 @@
+# bnf
+
+<token> ::=
+	<identifier>
+	| <literal>
+	| <operator>
+
+<whitespace> ::=
+	<whitespace char> <optional whitespace>
+
+<optional whitespace> ::=
+	[ <whitespace char>... ]
+
+<whitespace char> ::=
+	<__isspace__>
+
+<space> ::=
+	<__space__>
+
+<identifier> ::=
+	<less than operator>
+	<identifier start>
+	[ <identifier extension>... ]
+	<greater than operator>
+
+<identifier start> ::=
+	<simple Latin letter>
+	| <connector>
+
+<identifier extension> ::=
+	<letter or number>
+	| <connector>
+	| <space>
+
+<literal> ::=
+	<anything> [ <anything>... ]
+
+<operator> ::=
+	<production operator>
+	| <ellipsis>
+	| <op chars>
+
+<production operator> ::=
+	: : =
+
+<ellipsis> ::=
+	. . .
+
+<letter or number> ::=
+	<simple Latin upper case letter>
+	| <simple Latin lower case letter>
+	| <digit>
+
+<anything> ::=
+	<letter or number>
+	| <symbol>
+
+<simple Latin letter> ::=
+	<simple Latin upper case letter>
+	| <simple Latin lower case letter>
+
+<simple Latin upper case letter> ::=
+	A | B | C | D | E | F | G | H | I | J | K | L | M | N | O
+	| P | Q | R | S | T | U | V | W | X | Y | Z
+
+<simple Latin lower case letter> ::=
+	a | b | c | d | e | f | g | h | i | j | k | l | m | n | o
+	| p | q | r | s | t | u | v | w | x | y | z
+
+<digit> ::=
+	0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+
+<connector> ::=
+	| <underscore>
+
+<symbol> ::=
+	<double quote>
+	| <quote>
+	| <double quote>
+	| <percent>
+	| <ampersand>
+	| <asterisk>
+	| <plus sign>
+	| <comma>
+	| <minus sign>
+	| <solidus>
+	| <colon>
+	| <semicolon>
+	| <equals operator>
+	| <question mark>
+	| <circumflex>
+	| <underscore>
+	| <at sign>
+	| <backtick>
+	| <hash>
+
+<op chars> ::=
+	<left paren>
+	| <right paren>
+	| <left bracket>
+	| <right bracket>
+	| <left brace>
+	| <right brace>
+	| <vertical bar>
+	| <period>
+
+<double quote> ::=
+	"
+
+<percent> ::=
+	%
+
+<ampersand> ::=
+	&
+
+<quote> ::=
+	'
+
+<left paren> ::=
+	(
+
+<right paren> ::=
+	)
+
+<asterisk> ::=
+	*
+
+<plus sign> ::=
+	+
+
+<comma> ::=
+	,
+
+<minus sign> ::=
+	-
+
+<period> ::=
+	.
+
+<solidus> ::=
+	/
+
+<reverse solidus> ::=
+	\
+
+<colon> ::=
+	:
+
+<semicolon> ::=
+	;
+
+<less than operator> ::=
+	<
+
+<equals operator> ::=
+	=
+
+<greater than operator> ::=
+	>
+
+<question mark> ::=
+	?
+
+<left bracket> ::=
+	[
+
+<right bracket> ::=
+	]
+
+<circumflex> ::=
+	^
+
+<underscore> ::=
+	_
+
+<vertical bar> ::=
+	|
+
+<left brace> ::=
+	{
+
+<right brace> ::=
+	}
+
+<at sign> ::=
+	@
+
+<hash> ::=
+	#
+
+<backtick> ::=
+	`
