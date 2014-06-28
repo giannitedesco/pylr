@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # vim: set fileencoding=utf8 :
 
-from pydot import quote_if_necessary
 from os.path import splitext, basename
 
 def read_file(fn):
@@ -567,29 +566,31 @@ def productions(fn):
 class Graph(object):
 	def __init__(self, name, fn):
 		f = open(fn, 'w')
-		f.write('digraph %s {\n'%quote_if_necessary(name))
+		f.write('digraph %s {\n'%self.q(name))
 		f.write('\tgraph[rankdir=LR]\n')
 		f.write('\tnode [shape = circle];\n')
 		f.write('\n')
 		self.f = f
 		super(Graph, self).__init__()
+	def q(self, s):
+		return '\"%s\"'%s
 	def add_node(self, n, **kwargs):
-		n = quote_if_necessary(n)
-		a = ' '.join(map(lambda (k,v):'%s=%s'%(k, quote_if_necessary(v)),
+		n = self.q(n)
+		a = ' '.join(map(lambda (k,v):'%s=%s'%(k, self.q(v)),
 				kwargs.items()))
 		self.f.write('%s [%s];\n'%(n,a))
 	def add_edge(self, pre, post, label):
-		pre = quote_if_necessary(pre)
-		post = quote_if_necessary(post)
+		pre = self.q(pre)
+		post = self.q(post)
 		if label == ' ':
 			self.f.write('%s -> %s [label="SPACE" color=red];\n'%(pre, post))
 			return
 		if label == '"':
 			label = '\\"'
-		label = quote_if_necessary(label)
+		label = self.q(label)
 		self.f.write('%s -> %s [label=%s];\n'%(pre, post, label))
 	def __del__(self):
-		print 'finishing graph'
+		#print 'finishing graph'
 		self.f.write('}\n')
 		self.f.close()
 
@@ -661,20 +662,6 @@ class CFile(file):
 		self.close()
 
 class DFA(object):
-	def graph_followpos(self, postbl, initials):
-		g = Graph('NFA', 'nfa.dot')
-		for i, p in zip(xrange(len(postbl)), postbl):
-			kwargs = {}
-			if isinstance(p, AstAccept):
-				kwargs['shape'] = 'doublecircle'
-				kwargs['color'] = 'red'
-				kwargs['label'] = p.rule_name
-			if i in initials:
-				kwargs['color'] = 'blue'
-			g.add_node(str(i), **kwargs)
-			for f in p.followpos:
-				g.add_edge(str(i), str(f),
-						p.literal)
 	def __init__(self, r, tbl):
 		# Check for cycles and resolve all production references
 		r.root = r.root.resolve_links(tbl)
@@ -685,8 +672,8 @@ class DFA(object):
 		r.root = r.root.flatten()
 
 		# Display the flattened parse tree
-		print 'Parse tree for: %s'%r.name
-		r.root.pretty_print()
+		#print 'Parse tree for: %s'%r.name
+		#r.root.pretty_print()
 
 		# Construct the position table
 		postbl = []
@@ -756,7 +743,6 @@ class DFA(object):
 			if x == initial:
 				assert(init is None)
 				init = i
-				print 'initial', i
 
 		self.initial = init
 		self.num_states = num_states
