@@ -192,15 +192,12 @@ class AstNode(object):
 			self._lastpos = frozenset(self._calc_lastpos())
 		return self._lastpos
 	def calc_followpos(self, postbl = []):
+		if self.followpos is not None:
+			print self, self.literal
+		assert(self.followpos is None)
 		self.followpos = set()
 
 class AstEpsilon(AstNode):
-	__instance = None
-	def __new__(cls, *args, **kwargs):
-		if cls.__instance is None:
-			cls.__instance = super(AstEpsilon, cls).__new__(cls, \
-							*args, **kwargs)
-		return cls.__instance
 	def __init__(self):
 		super(AstEpsilon, self).__init__()
 	def pretty_print(self, depth = 0):
@@ -219,6 +216,8 @@ class AstEpsilon(AstNode):
 		return set()
 	def _calc_lastpos(self):
 		return set()
+	def copy(self):
+		return AstEpsilon()
 
 class AstAccept(AstNode):
 	def __init__(self):
@@ -236,6 +235,8 @@ class AstAccept(AstNode):
 		return set({self.position})
 	def _calc_lastpos(self):
 		return set({self.position})
+	def copy(self):
+		return AstAccept()
 
 class AstLiteral(AstNode):
 	def __init__(self, literal):
@@ -254,6 +255,8 @@ class AstLiteral(AstNode):
 		return set({self.position})
 	def _calc_lastpos(self):
 		return set({self.position})
+	def copy(self):
+		return AstLiteral(self.literal)
 
 class AstLink(AstNode):
 	def __init__(self, p):
@@ -267,7 +270,7 @@ class AstLink(AstNode):
 			raise Exception('Cycle on %s'%self.p)
 		v.add(self.p)
 		#print 'Resolving', self.p
-		ret = tbl[self.p].root.resolve_links(tbl, v)
+		ret = tbl[self.p].root.resolve_links(tbl, v).copy()
 		v.remove(self.p)
 		return ret;
 
@@ -293,6 +296,8 @@ class AstUnary(AstNode):
 		self.op.leaves(out)
 	def calc_followpos(self, postbl = []):
 		self.op.calc_followpos(postbl)
+	def copy(self):
+		return self.__class__(self.op.copy())
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -318,6 +323,8 @@ class AstBinary(AstNode):
 	def calc_followpos(self, postbl = []):
 		self.a.calc_followpos(postbl)
 		self.b.calc_followpos(postbl)
+	def copy(self):
+		return self.__class__(self.a.copy(), self.b.copy())
 
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
@@ -330,7 +337,7 @@ class AstEllipsis(AstUnary):
 	def flatten(self):
 		# <x>... is equivalent <x>+, or <x><x>*
 		super(AstEllipsis, self).flatten()
-		return AstConcat(self.op, AstClosure(self.op))
+		return AstConcat(self.op, AstClosure(self.op.copy()))
 
 class AstClosure(AstUnary):
 	def __init__(self, op):
@@ -653,8 +660,8 @@ class DFA(object):
 		r.root = AstConcat(r.root.flatten(), AstAccept())
 
 		# Display the flattened parse tree
-		print 'Parse tree for: %s'%r.name
-		r.root.pretty_print()
+		#print 'Parse tree for: %s'%r.name
+		#r.root.pretty_print()
 
 		# Construct the position table
 		postbl = []
