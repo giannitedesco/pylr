@@ -17,7 +17,7 @@
 <space> ::=
 	<__space__>
 
-<identifier> ::=
+<@identifier> ::=
 	<less than operator>
 	<identifier start>
 	[ <identifier extension>... ]
@@ -32,10 +32,10 @@
 	| <connector>
 	| <space>
 
-<literal> ::=
+<@literal> ::=
 	<anything> [ <anything>... ]
 
-<operator> ::=
+<@operator> ::=
 	<production operator>
 	| <ellipsis>
 	| <op chars>

@@ -179,6 +179,8 @@ class AstNode(object):
 		return self
 	def leaves(self, out = []):
 		out.append(self)
+	def finals(self, out = []):
+		return
 	def nullable(self):
 		if self._nullable is None:
 			self._nullable = self._calc_nullable()
@@ -237,7 +239,9 @@ class AstAccept(AstNode):
 	def _calc_lastpos(self):
 		return set({self.position})
 	def copy(self):
-		return AstAccept()
+		return AstAccept(self.rule_name)
+	def finals(self, out = []):
+		out.append(self)
 
 class AstLiteral(AstNode):
 	def __init__(self, literal):
@@ -299,6 +303,8 @@ class AstUnary(AstNode):
 		self.op.calc_followpos(postbl)
 	def copy(self):
 		return self.__class__(self.op.copy())
+	def finals(self, out = []):
+		self.op.finals(out)
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -326,7 +332,9 @@ class AstBinary(AstNode):
 		self.b.calc_followpos(postbl)
 	def copy(self):
 		return self.__class__(self.a.copy(), self.b.copy())
-
+	def finals(self, out = []):
+		self.a.finals(out)
+		self.b.finals(out)
 	def __str__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
 	def __repr__(self):
@@ -403,7 +411,7 @@ class AstChoice(AstBinary):
 		return self.a.lastpos().union(self.b.lastpos())
 
 class Production(object):
-	def __init__(self, name):
+	def __init__(self, name, final = False):
 		self.name = name
 		self.root = None
 		self.pstack = []
@@ -423,7 +431,15 @@ class Production(object):
 				TokOpRBrace: Production.__rparen,
 		}
 
+		self.final = final
 		super(Production, self).__init__()
+
+	def make_final(self):
+		self.final = True
+		if isinstance(self.root, AstConcat) and \
+				isinstance(self.root.b, AstAccept):
+			return
+		self.root = AstConcat(self.root, AstAccept(self.name))
 
 	def __binop(self, cls):
 		b = self.stack.pop()
@@ -518,6 +534,8 @@ class Production(object):
 		else:
 			assert(self.__last is not None)
 			self.root = AstLiteral(self.__last.confus)
+		if self.final:
+			self.make_final()
 
 	def __str__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.name)
@@ -531,7 +549,13 @@ def productions(fn):
 			if p is not None:
 				p.eof()
 				yield p
-			p = Production(t.name)
+			if t.name[0] == '@':
+				name = t.name[1:]
+				final = True
+			else:
+				name = t.name
+				final = False
+			p = Production(name, final)
 		elif isinstance(t, TokLiteral):
 			map(lambda x:p.feed(TokLiteral(x)), t.name)
 		else:
@@ -553,7 +577,7 @@ class Graph(object):
 		n = quote_if_necessary(n)
 		a = ' '.join(map(lambda (k,v):'%s=%s'%(k, quote_if_necessary(v)),
 				kwargs.items()))
-		self.f.write('%s [label=%s %s];\n'%(n,n,a))
+		self.f.write('%s [%s];\n'%(n,a))
 	def add_edge(self, pre, post, label):
 		pre = quote_if_necessary(pre)
 		post = quote_if_necessary(post)
@@ -655,8 +679,10 @@ class DFA(object):
 		# Check for cycles and resolve all production references
 		r.root = r.root.resolve_links(tbl)
 
+		r.make_final()
+
 		# Flatten the tree and add the end-of-pattern marker
-		r.root = AstConcat(r.root.flatten(), AstAccept(r.name))
+		r.root = r.root.flatten()
 
 		# Display the flattened parse tree
 		print 'Parse tree for: %s'%r.name
@@ -672,7 +698,7 @@ class DFA(object):
 
 		# Calculate the followpos function
 		r.root.calc_followpos(postbl)
-		self.graph_followpos(postbl, r.root.firstpos())
+		#self.graph_followpos(postbl, r.root.firstpos())
 
 		initial = r.root.firstpos().union(frozenset({}))
 		states = {}
@@ -714,13 +740,18 @@ class DFA(object):
 					states[post]
 			self.num_trans += 1
 
+		f = []
+		r.root.finals(f)
+		f = set(map(lambda x:x.position, f))
+
 		# free up state sets and use the renumbering
-		final = set()
+		final = {}
 		init = None
 		while states:
 			x, i = states.popitem()
-			if r.root.b.position in x:
-				final.add(i)
+			for fpos in f.intersection(x):
+				final.setdefault(i,[]).append(\
+					postbl[fpos].rule_name)
 			s[i] = None
 			if x == initial:
 				assert(init is None)
@@ -741,14 +772,13 @@ class DFA(object):
 		g = Graph('DFA', fn)
 
 		for i in xrange(self.num_states):
-			kwargs = {}
+			kwargs = {'label': str(i + 1)}
 			if i in self.final:
 				kwargs['shape'] = 'doublecircle'
 				kwargs['color'] = 'red'
-				#kwargs['label'] = rule_name
+				kwargs['label'] = '\\n'.join(self.final[i])
 			if i == self.initial:
 				kwargs['color'] = 'blue'
-			kwargs['label'] = str(i + 1)
 			g.add_node(str(i + 1), **kwargs)
 
 		for pre, d in dfa.trans.items():
