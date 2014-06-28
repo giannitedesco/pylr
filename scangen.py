@@ -622,14 +622,13 @@ class CFile(file):
 						(sym, post + 1))
 			self.write('\t},\n')
 		self.write('};\n\n')
-	def state_table(self, dfa):
-		self.write('static const struct {\n')
-		self.write('\tuint8_t accept;\n')
-		self.write('}state[%u] = {\n'%(dfa.num_states + 1))
+	def accept_table(self, dfa):
+		self.write('static const dfa_state_t ')
+		self.write('accept[%u] = {\n'%(dfa.num_states + 1))
 		for i in xrange(dfa.num_states):
-			self.write('\t[ %u ] = {\n'%(i + 1))
-			self.write('\t\t.accept = %u,\n'%(int(i in dfa.final)))
-			self.write('\t},\n')
+			self.write('\t[ %u ] = %u,\n'%(
+					i + 1,
+					int(i in dfa.final)))
 		self.write('};\n\n')
 
 		self.write('static const dfa_state_t ')
@@ -760,7 +759,7 @@ class DFA(object):
 		c = CFile(cfn, incl=[hfn])
 		c.state_type(self.num_states)
 		c.transition_table(self)
-		c.state_table(self)
+		c.accept_table(self)
 		h = HFile(hfn)
 
 def parse_bnf(fn, tbl = {}):

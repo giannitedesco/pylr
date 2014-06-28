@@ -78,7 +78,7 @@ static int lexer_symbol(lexer_t l, char sym)
 again:
 	old = l->l_state;
 	new = trans[old][(uint8_t)sym];
-	if ( old && state[old].accept && (!new || !state[new].accept) ) {
+	if ( old && accept[old] && (!new || !accept[new]) ) {
 #if DEBUG
 		printf("END TOKEN: '%.*s'\n\n", (int)l->l_len, l->l_buf);
 #else
@@ -110,8 +110,8 @@ again:
 
 	printf("%u (accept=%u reject=%u) -> "
 		"%u (accept=%u reject=%u)\n",
-		old, state[old].accept, old == 0,
-		new, state[new].accept, new == 0);
+		old, accept[old], old == 0,
+		new, accept[new], new == 0);
 #endif
 
 	l->l_state = new;
