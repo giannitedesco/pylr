@@ -669,6 +669,8 @@ class DFA(object):
 		for (pos, x) in zip(xrange(len(postbl)), postbl):
 			x.position = pos
 
+		print 'NFA has %u positions'%len(postbl)
+
 		# Calculate the followpos function
 		r.root.calc_followpos(postbl)
 		self.graph_followpos(postbl, r.root.firstpos())
