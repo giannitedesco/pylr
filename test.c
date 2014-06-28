@@ -20,9 +20,9 @@ struct _lexer {
 	void *l_priv;
 	char *l_buf;
 	size_t l_len;
-	unsigned int l_state;
 	unsigned int l_line;
 	unsigned int l_col;
+	dfa_state_t l_state;
 };
 
 lexer_t lexer_new(const char *name, token_cb cb, void *priv)
@@ -63,6 +63,7 @@ static void clear_buf(lexer_t l)
 	l->l_len = 0;
 }
 
+#define DEBUG 1
 static int lexer_symbol(lexer_t l, char sym)
 {
 	unsigned int old, new;
@@ -78,8 +79,11 @@ again:
 	old = l->l_state;
 	new = trans[old][(uint8_t)sym];
 	if ( old && state[old].accept && (!new || !state[new].accept) ) {
-		//printf("END TOKEN\n\n");
+#if DEBUG
+		printf("END TOKEN: '%.*s'\n\n", (int)l->l_len, l->l_buf);
+#else
 		printf("token: '%.*s'\n", (int)l->l_len, l->l_buf);
+#endif
 		clear_buf(l);
 	}
 	if ( !new && old != initial_state ) {
@@ -88,12 +92,14 @@ again:
 	}
 
 	if ( old == initial_state && new ) {
-		//printf("BEGIN TOKEN\n");
+#if DEBUG
+		printf("BEGIN TOKEN\n");
+#endif
 		clear_buf(l);
 	}
 	to_buf(l, sym);
 
-#if 0
+#if DEBUG
 	if ( sym == '\n' ) {
 		printf("symbol is '\\n' : ");
 	}else if ( sym == '\t' ) {

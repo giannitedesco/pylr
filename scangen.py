@@ -220,11 +220,12 @@ class AstEpsilon(AstNode):
 		return AstEpsilon()
 
 class AstAccept(AstNode):
-	def __init__(self):
+	def __init__(self, name):
+		self.rule_name = name
 		super(AstAccept, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s"#"'%(pfx)
+		print '%s"# %s"'%(pfx, self.rule_name)
 	def __str__(self):
 		return '#'
 	def __repr__(self):
@@ -601,13 +602,19 @@ class CFile(file):
 			self.include(x)
 		if incl:
 			self.newline()
-	def transition_table(self, dfa):
-		if len(dfa.states) < 2**8:
+	def state_type(self, num_states):
+		if num_states + 1 < 2**8:
 			t = 'uint8_t'
+		elif num_states + 1 < 2**16:
+			t = 'uin16_t'
+		elif num_states + 1 < 2**32:
+			t = 'uint32_t'
 		else:
-			t = 'unsigned int'
-		self.write('static const %s '%t)
-		self.write('trans[%u][0x100] = {\n'%(len(dfa.states) + 1))
+			t = 'uint64_t'
+		self.write('typedef %s dfa_state_t;\n\n'%t)
+	def transition_table(self, dfa):
+		self.write('static const dfa_state_t ')
+		self.write('trans[%u][0x100] = {\n'%(dfa.num_states + 1))
 		for pre, d in dfa.trans.items():
 			self.write('\t[ %u ] = {\n'%(pre + 1))
 			for sym, post in sorted(d.items()):
@@ -616,21 +623,17 @@ class CFile(file):
 			self.write('\t},\n')
 		self.write('};\n\n')
 	def state_table(self, dfa):
-		if len(dfa.states) < 2**8:
-			t = 'uint8_t'
-		else:
-			t = 'unsigned int'
 		self.write('static const struct {\n')
 		self.write('\tuint8_t accept;\n')
-		self.write('}state[%u] = {\n'%(len(dfa.states) + 1))
-		for (x, i) in dfa.states.items():
+		self.write('}state[%u] = {\n'%(dfa.num_states + 1))
+		for i in xrange(dfa.num_states):
 			self.write('\t[ %u ] = {\n'%(i + 1))
-			self.write('\t\t.accept = %u,\n'%(int(x in dfa.final)))
+			self.write('\t\t.accept = %u,\n'%(int(i in dfa.final)))
 			self.write('\t},\n')
 		self.write('};\n\n')
 
-		self.write('static const %s initial_state = %s;\n\n'%\
-				(t, dfa.states[dfa.initial] + 1))
+		self.write('static const dfa_state_t ')
+		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
 	def __del__(self):
 		self.close()
 
@@ -642,6 +645,7 @@ class DFA(object):
 			if isinstance(p, AstAccept):
 				kwargs['shape'] = 'doublecircle'
 				kwargs['color'] = 'red'
+				kwargs['label'] = p.rule_name
 			if i in initials:
 				kwargs['color'] = 'blue'
 			g.add_node(str(i), **kwargs)
@@ -649,19 +653,15 @@ class DFA(object):
 				g.add_edge(str(i), str(f),
 						p.literal)
 	def __init__(self, r, tbl):
-		# Don't let the root be a reference FIXME
-		while isinstance(r.root, AstLink):
-			r.root = tbl[r.root.p].root
-
 		# Check for cycles and resolve all production references
 		r.root = r.root.resolve_links(tbl)
 
 		# Flatten the tree and add the end-of-pattern marker
-		r.root = AstConcat(r.root.flatten(), AstAccept())
+		r.root = AstConcat(r.root.flatten(), AstAccept(r.name))
 
 		# Display the flattened parse tree
-		#print 'Parse tree for: %s'%r.name
-		#r.root.pretty_print()
+		print 'Parse tree for: %s'%r.name
+		r.root.pretty_print()
 
 		# Construct the position table
 		postbl = []
@@ -715,30 +715,39 @@ class DFA(object):
 					states[post]
 			self.num_trans += 1
 
-		# TODO: forget about state sets and use renumbering
+		# free up state sets and use the renumbering
 		final = set()
-		for x in states.keys():
+		init = None
+		while states:
+			x, i = states.popitem()
 			if r.root.b.position in x:
-				final.add(x)
+				final.add(i)
+			s[i] = None
+			if x == initial:
+				assert(init is None)
+				init = i
+				print 'initial', i
 
-		self.initial = initial
+		self.initial = init
+		self.num_states = num_states
 		self.final = final
-		self.states = states
 		self.trans = trans
 
-		print 'DFA has %u states and %u transitions'%(len(self.states),
-							self.num_trans)
+		print 'DFA has %u states and %u transitions'%(\
+						self.num_states,
+						self.num_trans)
 		super(DFA, self).__init__()
 
 	def dump_graph(self, fn):
 		g = Graph('DFA', fn)
 
-		for (x, i) in self.states.items():
+		for i in xrange(self.num_states):
 			kwargs = {}
-			if x in self.final:
+			if i in self.final:
 				kwargs['shape'] = 'doublecircle'
 				kwargs['color'] = 'red'
-			if x == self.initial:
+				#kwargs['label'] = rule_name
+			if i == self.initial:
 				kwargs['color'] = 'blue'
 			kwargs['label'] = str(i + 1)
 			g.add_node(str(i + 1), **kwargs)
@@ -749,6 +758,7 @@ class DFA(object):
 
 	def dump_c(self, cfn, hfn):
 		c = CFile(cfn, incl=[hfn])
+		c.state_type(self.num_states)
 		c.transition_table(self)
 		c.state_table(self)
 		h = HFile(hfn)
