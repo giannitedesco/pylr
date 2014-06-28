@@ -625,7 +625,7 @@ class CFile(file):
 		self.write('}state[%u] = {\n'%(len(dfa.states) + 1))
 		for (x, i) in dfa.states.items():
 			self.write('\t[ %u ] = {\n'%(i + 1))
-			self.write('\t\t.accept = %u,\n'%(int(x == dfa.final)))
+			self.write('\t\t.accept = %u,\n'%(int(x in dfa.final)))
 			self.write('\t},\n')
 		self.write('};\n\n')
 
@@ -714,9 +714,10 @@ class DFA(object):
 			self.num_trans += 1
 
 		# TODO: forget about state sets and use renumbering
+		final = set()
 		for x in states.keys():
 			if r.root.b.position in x:
-				final = x
+				final.add(x)
 
 		self.initial = initial
 		self.final = final
@@ -732,7 +733,7 @@ class DFA(object):
 
 		for (x, i) in self.states.items():
 			kwargs = {}
-			if x == self.final:
+			if x in self.final:
 				kwargs['shape'] = 'doublecircle'
 				kwargs['color'] = 'red'
 			if x == self.initial:
