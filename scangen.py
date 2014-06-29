@@ -956,7 +956,8 @@ def parse_bnf(fn, tbl = {}):
 def builtin_productions(tbl = {}):
 	d = {
 		'__lf__': '\\n',
-		'__isspace__': '\\s',
+		'__cr__': '\\r',
+		'__tab__': '\\t',
 		'__space__': ' ',
 	}
 	for k, v in d.items():
