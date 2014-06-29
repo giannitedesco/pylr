@@ -228,9 +228,9 @@ class AstAccept(AstNode):
 		pfx = ' ' * depth * 2
 		print '%s"# %s"'%(pfx, self.rule_name)
 	def __str__(self):
-		return '#'
+		return '#(%s)'%self.rule_name
 	def __repr__(self):
-		return '#'
+		return '#(%s)'%self.rule_name
 	def _calc_nullable(self):
 		return False
 	def _calc_firstpos(self):
@@ -671,6 +671,79 @@ class CFile(file):
 	def __del__(self):
 		self.close()
 
+class Block(frozenset):
+	def __init__(self, *args, **kwargs):
+		super(Block, self).__init__(*args, **kwargs)
+	def stable_refinement(self, func):
+		#    partition b into subgroups such that two states s and t
+		#    are in the same subgroup if and only if for all
+		#    input symbols a, states s and t have transitions on a
+		#    to states in the same group of S
+		#    replace b in Snew by the set of all subgroups formed
+		r = {}
+		#print '', self
+		for x in self:
+			ff = func.get(x, frozenset({}))
+			r.setdefault(ff, []).append(x)
+		ret = map(Block, r.values())
+		#for k,v in r.items():
+		#	print '%s -> %s'%(k, v)
+		#print self
+		#print ret
+		#print
+
+		if len(ret) > 1:
+			return ret
+		return None
+
+class Partition(set):
+	def __init__(self, *args, **kwargs):
+		self.item_mapping = {}
+		super(Partition, self).__init__()
+		if len(args):
+			for x in args[0]:
+				self.add(x)
+	def add(self, item):
+		assert(isinstance(item, Block))
+		for x in item:
+			assert(not self.item_mapping.has_key(x))
+			self.item_mapping[x] = item
+		super(Partition, self).add(item)
+	def update(self, s):
+		for item in s:
+			self.add(item)
+	def popitem(self):
+		item = super(Partition, self).popitem()
+		for x in item:
+			assert(self.item_mapping.has_key(x))
+			del self.item_mapping[x]
+		return item
+	def block_func(self, func):
+		# re-write the function to indicate the block which the
+		# item is bucketed in to
+		f = {}
+		for k,v in func.items():
+			f[k] = frozenset(map(lambda (x,y):
+					(x, self.item_mapping[y]),
+					v.items()))
+		return f
+	def refine(self, func):
+		# for each block in S
+		ret = Partition()
+		delta = False
+		f = self.block_func(func)
+		for b in self:
+			new = b.stable_refinement(f)
+			if new is None:
+				ret.add(b)
+				continue
+			ret.update(new)
+			delta = True
+		if delta:
+			return ret
+		else:
+			return None
+
 class DFA(object):
 	def __init__(self, r, tbl):
 		# Check for cycles and resolve all production references
@@ -764,6 +837,29 @@ class DFA(object):
 						self.num_trans)
 		super(DFA, self).__init__()
 
+	def optimize(self):
+		# 1. partition in to final and non-final, S
+		f = Block(self.final)
+		nf = Block(set(xrange(self.num_states)).difference(f))
+		S = Partition({f, nf})
+
+		# 2. until fix-point
+		#print S
+		while True:
+			Snew = S.refine(dfa.trans)
+			if Snew is None:
+				break
+			S = Snew
+			#print S
+		print 'Optimized DFA, %d states now'%len(S)
+
+		# Choose one state in each group of Sfinal as the
+		# representative for that
+		# group. The representatives will be the states of the
+		# minimum-state DFA
+		# p206
+		return
+
 	def dump_graph(self, fn):
 		g = Graph('DFA', fn)
 
@@ -821,6 +917,8 @@ if __name__ == '__main__':
 	builtin_productions(tbl)
 	map(lambda x:parse_bnf(x, tbl), argv[2:])
 	dfa = DFA(tbl[argv[1]], tbl)
+	del tbl
+	dfa.optimize()
 	dfa.dump_graph('dfa.dot')
 	dfa.dump_c('lex.c', 'lex.h')
 	raise SystemExit, 0
