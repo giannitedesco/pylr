@@ -658,6 +658,16 @@ class CFile(file):
 
 		self.write('static const dfa_state_t ')
 		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
+	def action_table(self, dfa):
+		# TODO: optimise this
+		self.write('static const char * ')
+		self.write('action[%u] = {\n'%(dfa.num_states + 1))
+		for i,v in dfa.final.items():
+			self.write('\t[ %u ] = "%s",\n'%(
+					i + 1,
+					'|'.join(map(lambda x:x.rule_name,
+						dfa.final[i]))))
+		self.write('};\n\n')
 	def __del__(self):
 		self.close()
 
@@ -738,7 +748,7 @@ class DFA(object):
 			x, i = states.popitem()
 			for fpos in f.intersection(x):
 				final.setdefault(i,[]).append(\
-					postbl[fpos].rule_name)
+					postbl[fpos])
 			s[i] = None
 			if x == initial:
 				assert(init is None)
@@ -762,7 +772,9 @@ class DFA(object):
 			if i in self.final:
 				kwargs['shape'] = 'doublecircle'
 				kwargs['color'] = 'red'
-				kwargs['label'] = '\\n'.join(self.final[i])
+				kwargs['label'] = '\\n'.join(\
+					map(lambda x:x.rule_name,
+						self.final[i]))
 			if i == self.initial:
 				kwargs['color'] = 'blue'
 			g.add_node(str(i + 1), **kwargs)
@@ -776,6 +788,7 @@ class DFA(object):
 		c.state_type(self.num_states)
 		c.transition_table(self)
 		c.accept_table(self)
+		c.action_table(self)
 		h = HFile(hfn)
 
 def parse_bnf(fn, tbl = {}):

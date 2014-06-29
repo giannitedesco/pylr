@@ -80,9 +80,11 @@ again:
 	new = trans[old][(uint8_t)sym];
 	if ( old && accept[old] && (!new || !accept[new]) ) {
 #if DEBUG
-		printf("END TOKEN: '%.*s'\n\n", (int)l->l_len, l->l_buf);
+		printf("END TOKEN: %s '%.*s'\n\n",
+			action[old], (int)l->l_len, l->l_buf);
 #else
-		printf("token: '%.*s'\n", (int)l->l_len, l->l_buf);
+		printf("token: %s'%.*s'\n",
+			action[old], (int)l->l_len, l->l_buf);
 #endif
 		clear_buf(l);
 	}
