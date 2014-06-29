@@ -837,37 +837,7 @@ class DFA(object):
 						self.num_trans)
 		super(DFA, self).__init__()
 
-	def optimize(self):
-		# 1. partition in to final and non-final, S
-		f = Block(self.final)
-		nf = Block(set(xrange(self.num_states)).difference(f))
-		S = Partition({f, nf})
-
-		# 2. until fix-point
-		while True:
-			Snew = S.refine(dfa.trans)
-			if Snew is None:
-				break
-			S = Snew
-		print 'Optimized DFA, %d states now'%len(S)
-
-		obsolete = {}
-		for b in S:
-			if len(b) == 1:
-				continue
-			i = iter(b)
-			v = i.next()
-			for k in i:
-				print ' -', k, 'obsoleted by', v
-				obsolete[k] = v
-				try:
-					del self.trans[k]
-				except KeyError:
-					pass
-
-		print obsolete
-		print
-
+	def shrink(self, obsolete):
 		def new_number(v, o):
 			ret = v
 			for x in o:
@@ -894,26 +864,60 @@ class DFA(object):
 
 		# renumber the states
 		new = {}
+		num_trans = 0
 		s = sorted(obsolete.keys())
 		for k, v in self.trans.items():
-			new[new_number(k, s)] = renumber(v, obsolete, s)
+			v = renumber(v, obsolete, s)
+			new[new_number(k, s)] = v
+			num_trans += len(v)
 
 		ni = new_number(self.initial, s)
 
-		# FIXME: now all final states in the group apply so we
-		# need to do a better job here
+		# now all final states in the group apply so we
+		# need to do merge them in here as we renumber
 		nf = {}
 		for k,v in self.final.items():
-			nk = new_number(obsolete.get(k, k), s)
+			nk = obsolete.get(k, k)
+			if nk != k:
+				v = list(set(self.final.get(nk, []) + v))
+			nk = new_number(nk, s)
 			nf[nk] = v
 
 		self.trans = new
 		self.num_states -= len(obsolete)
+		self.num_trans = num_trans
 		self.initial = ni
 		self.final = nf
 
+	def optimize(self):
+		# 1. partition in to final and non-final, S
+		f = Block(self.final)
+		nf = Block(set(xrange(self.num_states)).difference(f))
+		S = Partition({f, nf})
 
-		return
+		# 2. until fix-point
+		while True:
+			Snew = S.refine(dfa.trans)
+			if Snew is None:
+				break
+			S = Snew
+
+		obsolete = {}
+		for b in S:
+			if len(b) == 1:
+				continue
+			i = iter(b)
+			v = i.next()
+			for k in i:
+				obsolete[k] = v
+				try:
+					del self.trans[k]
+				except KeyError:
+					pass
+
+		self.shrink(obsolete)
+		print 'DFA has %d states and %d transitions (optimal)'%(\
+			self.num_states, self.num_trans)
 
 	def dump_graph(self, fn):
 		g = Graph('DFA', fn)
