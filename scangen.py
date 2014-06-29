@@ -980,6 +980,11 @@ if __name__ == '__main__':
 	del tbl
 	dfa.dump_graph('dfa.dot')
 	dfa.optimize()
+	for f in dfa.final.values():
+		if len(f) <= 1:
+			continue
+		f = ', '.join(map(lambda x:x.rule_name, f))
+		print 'Ambiguity: %s'%f
 	dfa.dump_graph('optimized.dot')
 	dfa.dump_c('lex.c', 'lex.h')
 	raise SystemExit, 0
