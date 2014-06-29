@@ -844,20 +844,75 @@ class DFA(object):
 		S = Partition({f, nf})
 
 		# 2. until fix-point
-		#print S
 		while True:
 			Snew = S.refine(dfa.trans)
 			if Snew is None:
 				break
 			S = Snew
-			#print S
 		print 'Optimized DFA, %d states now'%len(S)
 
-		# Choose one state in each group of Sfinal as the
-		# representative for that
-		# group. The representatives will be the states of the
-		# minimum-state DFA
-		# p206
+		obsolete = {}
+		for b in S:
+			if len(b) == 1:
+				continue
+			i = iter(b)
+			v = i.next()
+			for k in i:
+				print ' -', k, 'obsoleted by', v
+				obsolete[k] = v
+				try:
+					del self.trans[k]
+				except KeyError:
+					pass
+
+		print obsolete
+		print
+
+		def new_number(v, o):
+			ret = v
+			for x in o:
+				assert(v != x)
+				if v < x:
+					break
+				if v > x:
+					ret -= 1
+			return ret
+
+		def replace(v, o):
+			return o.get(v, v)
+
+		def renumber(r, o, s):
+			ret = {}
+			for k,v in r.items():
+				assert(k not in obsolete)
+				ret[k] = replace(v, o)
+			r = ret
+			for k,v in r.items():
+				assert(k not in obsolete)
+				ret[k] = new_number(v, s)
+			return ret
+
+		# renumber the states
+		new = {}
+		s = sorted(obsolete.keys())
+		for k, v in self.trans.items():
+			new[new_number(k, s)] = renumber(v, obsolete, s)
+
+		ni = new_number(self.initial, s)
+
+		# FIXME: now all final states in the group apply so we
+		# need to do a better job here
+		nf = {}
+		for k,v in self.final.items():
+			nk = new_number(obsolete.get(k, k), s)
+			nf[nk] = v
+
+		self.trans = new
+		self.num_states -= len(obsolete)
+		self.initial = ni
+		self.final = nf
+
+
 		return
 
 	def dump_graph(self, fn):
@@ -918,7 +973,8 @@ if __name__ == '__main__':
 	map(lambda x:parse_bnf(x, tbl), argv[2:])
 	dfa = DFA(tbl[argv[1]], tbl)
 	del tbl
-	dfa.optimize()
 	dfa.dump_graph('dfa.dot')
+	dfa.optimize()
+	dfa.dump_graph('optimized.dot')
 	dfa.dump_c('lex.c', 'lex.h')
 	raise SystemExit, 0
