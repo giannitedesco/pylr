@@ -4,15 +4,26 @@
 	<identifier>
 	| <literal>
 	| <operator>
+	| <whitespace>
+	| <comment>
 
-<whitespace> ::=
+<@comment> ::=
+	<hash> [ <anything>... ] <__lf__>
+
+<anything> ::=
+	<letter or number>
+	| <symbol>
+	| <op char>
+	| <whitespace char>
+
+<@whitespace> ::=
 	<whitespace char> <optional whitespace>
 
 <optional whitespace> ::=
 	[ <whitespace char>... ]
 
 <whitespace char> ::=
-	<__isspace__>
+	<__space__> | <__tab__> | <__cr__> | <__lf__>
 
 <space> ::=
 	<__space__>
@@ -33,12 +44,12 @@
 	| <space>
 
 <@literal> ::=
-	<anything> [ <anything>... ]
+	<non whitespace> [ <non whitespace>... ]
 
 <@operator> ::=
 	<production operator>
 	| <ellipsis>
-	| <op chars>
+	| <op char>
 
 <production operator> ::=
 	: : =
@@ -51,7 +62,7 @@
 	| <simple Latin lower case letter>
 	| <digit>
 
-<anything> ::=
+<non whitespace> ::=
 	<letter or number>
 	| <symbol>
 
@@ -92,9 +103,9 @@
 	| <underscore>
 	| <at sign>
 	| <backtick>
-	| <hash>
+#	| <hash>
 
-<op chars> ::=
+<op char> ::=
 	<left paren>
 	| <right paren>
 	| <left bracket>
@@ -186,7 +197,7 @@
 	@
 
 <hash> ::=
-	#
+	<__hash__>
 
 <backtick> ::=
 	`

@@ -583,7 +583,10 @@ class Graph(object):
 		pre = self.q(pre)
 		post = self.q(post)
 		if label == ' ':
-			self.f.write('%s -> %s [label="SPACE" color=red];\n'%(pre, post))
+			self.f.write('%s -> %s [label="<space>" color=green];\n'%(pre, post))
+			return
+		if label == '#':
+			self.f.write('%s -> %s [label="#" color=magenta];\n'%(pre, post))
 			return
 		if label == '"':
 			label = '\\"'
@@ -959,6 +962,7 @@ def builtin_productions(tbl = {}):
 		'__cr__': '\\r',
 		'__tab__': '\\t',
 		'__space__': ' ',
+		'__hash__': '#',
 	}
 	for k, v in d.items():
 		p = Production(k)
@@ -980,11 +984,11 @@ if __name__ == '__main__':
 	del tbl
 	dfa.dump_graph('dfa.dot')
 	dfa.optimize()
+	dfa.dump_graph('optimized.dot')
 	for f in dfa.final.values():
 		if len(f) <= 1:
 			continue
 		f = ', '.join(map(lambda x:x.rule_name, f))
 		print 'Ambiguity: %s'%f
-	dfa.dump_graph('optimized.dot')
 	dfa.dump_c('lex.c', 'lex.h')
 	raise SystemExit, 0
