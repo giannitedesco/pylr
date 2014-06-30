@@ -671,7 +671,7 @@ class CFile(file):
 			self.write('\t[ %u ] = "%s",\n'%(
 					i + 1,
 					'|'.join(map(lambda x:x.rule_name,
-						dfa.final[i]))))
+						sorted(dfa.final[i])))))
 		self.write('};\n\n')
 	def __del__(self):
 		self.close()
@@ -687,8 +687,6 @@ class Block(frozenset):
 		#    replace b in Snew by the set of all subgroups formed
 		r = {}
 		#print '', self
-		# FIXME: need to take in to account transitions to accepting
-		# accepting states, too
 		for x in self:
 			ff = func.get(x, frozenset({}))
 			r.setdefault(ff, []).append(x)
@@ -725,7 +723,7 @@ class Partition(set):
 			assert(self.item_mapping.has_key(x))
 			del self.item_mapping[x]
 		return item
-	def block_func(self, func):
+	def block_func(self, func, final):
 		# re-write the function to indicate the block which the
 		# item is bucketed in to
 		f = {}
@@ -733,12 +731,18 @@ class Partition(set):
 			f[k] = frozenset(map(lambda (x,y):
 					(x, self.item_mapping[y]),
 					v.items()))
+
+		# Any final blocks are given an outgoing edge to knowhere
+		# keyed on the name of the accepting state
+		for k,v in final.items():
+			v = '|'.join(map(lambda x:x.rule_name, sorted(v)))
+			f[k] = frozenset(set({(v,None)}).union(f.get(k, set({}))))
 		return f
-	def refine(self, func):
+	def refine(self, func, final):
 		# for each block in S
 		ret = Partition()
 		delta = False
-		f = self.block_func(func)
+		f = self.block_func(func, final)
 		for b in self:
 			new = b.stable_refinement(f)
 			if new is None:
@@ -904,7 +908,7 @@ class DFA(object):
 
 		# 2. until fix-point
 		while True:
-			Snew = S.refine(dfa.trans)
+			Snew = S.refine(dfa.trans, dfa.final)
 			if Snew is None:
 				break
 			S = Snew
@@ -987,7 +991,7 @@ if __name__ == '__main__':
 	dfa = DFA(tbl[argv[1]], tbl)
 	del tbl
 	dfa.dump_graph('dfa.dot')
-	##dfa.optimize()
+	dfa.optimize()
 	dfa.dump_graph('optimized.dot')
 	for f in dfa.final.values():
 		if len(f) <= 1:
