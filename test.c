@@ -1,8 +1,10 @@
-#include "lex.c"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
+
+#include "lex.c"
 
 #define BUF_INCREMENT 128
 typedef struct _tok *tok_t;
@@ -77,14 +79,14 @@ static int lexer_symbol(lexer_t l, char sym)
 
 again:
 	old = l->l_state;
-	new = trans[old][(uint8_t)sym];
+	new = next_symbol(old, sym);
 	if ( old && accept[old] && (!new || !accept[new]) ) {
 #if DEBUG
 		printf("END TOKEN: %s '%.*s'\n\n",
 			action[old], (int)l->l_len, l->l_buf);
 #else
-		printf("token: %s '%.*s'\n",
-			action[old], (int)l->l_len, l->l_buf);
+		//printf("token: %s '%.*s'\n",
+		//	action[old], (int)l->l_len, l->l_buf);
 #endif
 		clear_buf(l);
 	}
