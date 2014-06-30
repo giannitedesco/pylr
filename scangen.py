@@ -108,23 +108,6 @@ class TokOpEllipsis(TokOpUnary):
 	def __init__(self):
 		super(TokOpEllipsis, self).__init__()
 
-class re_escape(dict):
-	__f = None
-	__e = set('[]()|*+.?\\')
-	def escape(self, x):
-		return ''.join(self[s] for s in x if s in self.keys())
-
-	def __init__(self):
-		if re_escape.__f is None:
-			f = {}
-			for x in map(chr, xrange(0, 0x100)):
-				if x in re_escape.__e:
-					f[x] = '\\' + x
-				else:
-					f[x] = x
-			re_escape.__f = f
-		super(re_escape, self).__init__(re_escape.__f)
-
 def tokens(fn):
 	def is_id(l):
 		return len(l) > 2 and l[0] == '<' and l[-1:] == '>'
@@ -244,8 +227,6 @@ class AstAccept(AstNode):
 
 class AstLiteral(AstNode):
 	def __init__(self, literal):
-		#f = re_escape()
-		#self.literal = f.escape(literal)
 		if literal == '\'':
 			literal = '\\\''
 		self.literal = literal
