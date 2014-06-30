@@ -665,7 +665,7 @@ class CFile(file):
 		self.write('static const dfa_state_t ')
 		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
 	def action_table(self, dfa):
-		self.write('static const char * ')
+		self.write('static const char * const ')
 		self.write('action[%u] = {\n'%(dfa.num_states + 1))
 		for i,v in dfa.final.items():
 			self.write('\t[ %u ] = "%s",\n'%(
