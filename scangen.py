@@ -24,24 +24,25 @@ def builtin_productions(tbl = {}):
 	return tbl
 
 if __name__ == '__main__':
-	from sys import argv, setrecursionlimit
-	from resource import setrlimit, RLIMIT_STACK
-
-	setrecursionlimit(100000)
-	setrlimit(RLIMIT_STACK, (1 << 29, -1))
+	from sys import argv
 
 	tbl = {}
 	builtin_productions(tbl)
 	map(lambda x:parse_bnf(x, tbl), argv[2:])
+
 	dfa = DFA(tbl[argv[1]], tbl)
 	del tbl
+
 	dfa.dump_graph('dfa.dot')
 	dfa.optimize()
 	dfa.dump_graph('optimized.dot')
+
 	for f in dfa.final.values():
 		if len(f) <= 1:
 			continue
 		f = ', '.join(map(lambda x:x.rule_name, f))
 		print 'Ambiguity: %s'%f
+
 	dfa.dump_c('lex.c', 'lex.h')
+
 	raise SystemExit, 0
