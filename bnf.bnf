@@ -12,9 +12,14 @@
 
 <anything> ::=
 	<letter or number>
+	| <less than operator>
+	| <greater than operator>
 	| <symbol>
 	| <op char>
-	| <whitespace char>
+	| <hash>
+	| <__space__>
+	| <__tab__>
+	| <__cr__>
 
 <@whitespace> ::=
 	<whitespace char> <optional whitespace>
@@ -51,9 +56,11 @@
 	| <ellipsis>
 	| <op char>
 
+# don't get confused with an actual <production operator>
 <production operator> ::=
 	: : =
 
+# Instead of ... to not get confused with an actual <ellipsis>
 <ellipsis> ::=
 	. . .
 
@@ -103,7 +110,6 @@
 	| <underscore>
 	| <at sign>
 	| <backtick>
-#	| <hash>
 
 <op char> ::=
 	<left paren>

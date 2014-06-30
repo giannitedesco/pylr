@@ -83,7 +83,7 @@ again:
 		printf("END TOKEN: %s '%.*s'\n\n",
 			action[old], (int)l->l_len, l->l_buf);
 #else
-		printf("token: %s'%.*s'\n",
+		printf("token: %s '%.*s'\n",
 			action[old], (int)l->l_len, l->l_buf);
 #endif
 		clear_buf(l);

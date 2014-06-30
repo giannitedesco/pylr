@@ -588,6 +588,9 @@ class Graph(object):
 		if label == '#':
 			self.f.write('%s -> %s [label="#" color=magenta];\n'%(pre, post))
 			return
+		if label == '\\n':
+			self.f.write('%s -> %s [label="<LF>" color=orange];\n'%(pre, post))
+			return
 		if label == '"':
 			label = '\\"'
 		label = self.q(label)
@@ -662,7 +665,6 @@ class CFile(file):
 		self.write('static const dfa_state_t ')
 		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
 	def action_table(self, dfa):
-		# TODO: optimise this
 		self.write('static const char * ')
 		self.write('action[%u] = {\n'%(dfa.num_states + 1))
 		for i,v in dfa.final.items():
@@ -685,6 +687,8 @@ class Block(frozenset):
 		#    replace b in Snew by the set of all subgroups formed
 		r = {}
 		#print '', self
+		# FIXME: need to take in to account transitions to accepting
+		# accepting states, too
 		for x in self:
 			ff = func.get(x, frozenset({}))
 			r.setdefault(ff, []).append(x)
@@ -983,7 +987,7 @@ if __name__ == '__main__':
 	dfa = DFA(tbl[argv[1]], tbl)
 	del tbl
 	dfa.dump_graph('dfa.dot')
-	dfa.optimize()
+	##dfa.optimize()
 	dfa.dump_graph('optimized.dot')
 	for f in dfa.final.values():
 		if len(f) <= 1:
