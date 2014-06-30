@@ -7,6 +7,18 @@
 #include "lex.h"
 #include "lex.c"
 
+struct _tok {
+	const char *t_file;
+	unsigned int t_line;
+	unsigned int t_col;
+	enum tok t_type;
+	union {
+		const char *tu_identifier;
+		unsigned long long tu_int;
+		double tu_float;
+	}t_u;
+};
+
 #define BUF_INCREMENT 128
 struct _lexer {
 	const char *l_name;
@@ -37,7 +49,7 @@ out:
 	return l;
 }
 
-static int to_buf(lexer_t l, char sym)
+static int to_buf(struct _lexer *l, char sym)
 {
 	if ( l->l_len >= l->l_max ) {
 		char *new;
@@ -52,9 +64,30 @@ static int to_buf(lexer_t l, char sym)
 	return 1;
 }
 
-static void clear_buf(lexer_t l)
+static void clear_buf(struct _lexer *l)
 {
 	l->l_len = 0;
+}
+
+static int nul_terminate(struct _lexer *l)
+{
+	return to_buf(l, '\0');
+}
+
+static int emit(struct _lexer *l)
+{
+	struct _tok tok;
+
+	if ( !nul_terminate(l) )
+		return 0;
+
+	tok.t_file = l->l_name;
+	tok.t_line = l->l_line;
+	tok.t_col = l->l_col;
+
+	tok.t_u.tu_identifier = l->l_buf;
+
+	return (*l->l_cb)(&tok, l->l_priv);
 }
 
 #define DEBUG 0
@@ -71,7 +104,7 @@ static int lexer_symbol(lexer_t l, char sym)
 
 again:
 	old = l->l_state;
-	new = next_symbol(old, sym);
+	new = l->l_state = next_symbol(old, sym);
 	if ( old == initial_state && !new ) {
 		fprintf(stderr, "%s: unexpected \\x%.2x: line %u, col %u\n",
 			l->l_name, sym, l->l_line, l->l_col);
@@ -84,8 +117,8 @@ again:
 #else
 		if ( strcmp(action[old], "comment") &&
 				strcmp(action[old], "whitespace"))
-		printf("token: %s '%.*s'\n",
-			action[old], (int)l->l_len, l->l_buf);
+		if ( !emit(l) )
+			return 9;
 #endif
 		clear_buf(l);
 	}
@@ -117,7 +150,6 @@ again:
 		new, accept[new], new == 0);
 #endif
 
-	l->l_state = new;
 	if ( !l->l_state )
 		l->l_state = initial_state;
 
@@ -149,6 +181,7 @@ void lexer_free(lexer_t l)
 
 static int tok_cb(tok_t tok, void *priv)
 {
+	printf("%s\n", tok->t_u.tu_identifier);
 	return 1;
 }
 
