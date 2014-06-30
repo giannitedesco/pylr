@@ -4,18 +4,10 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "lex.h"
 #include "lex.c"
 
 #define BUF_INCREMENT 128
-typedef struct _tok *tok_t;
-typedef int(*token_cb)(tok_t tok, void *priv);
-typedef struct _lexer *lexer_t;
-
-lexer_t lexer_new(const char *name, token_cb cb, void *priv);
-int lexer_feed(lexer_t lex, char *buf, size_t len);
-int lexer_eof(lexer_t lex);
-void lexer_free(lexer_t lex);
-
 struct _lexer {
 	const char *l_name;
 	token_cb l_cb;
