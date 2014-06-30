@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "lex.h"
 #include "lex.c"
@@ -105,28 +106,32 @@ static int lexer_symbol(lexer_t l, char sym)
 again:
 	old = l->l_state;
 	new = l->l_state = next_symbol(old, sym);
-	if ( old == initial_state && !new ) {
-		fprintf(stderr, "%s: unexpected \\x%.2x: line %u, col %u\n",
-			l->l_name, sym, l->l_line, l->l_col);
-		return 0;
-	}
 	if ( old && accept[old] && (!new || !accept[new]) ) {
 #if DEBUG
 		printf("END TOKEN: %s '%.*s'\n\n",
 			action[old], (int)l->l_len, l->l_buf);
 #else
-		if ( strcmp(action[old], "comment") &&
-				strcmp(action[old], "whitespace"))
+//		if ( strcmp(action[old], "comment") &&
+//				strcmp(action[old], "whitespace"))
+#endif
 		if ( !emit(l) )
 			return 9;
-#endif
 		clear_buf(l);
 	}
-	if ( !new && old != initial_state ) {
-		l->l_state = initial_state;
-		goto again;
-	}
 
+	if ( !new ) {
+		if ( old == initial_state ) {
+			fprintf(stderr, "%s: unexpected \\x%.2x(%c): "
+				"line %u, col %u\n",
+				l->l_name, sym,
+				isprint(sym) ? sym : sym,
+				l->l_line, l->l_col);
+		}else{
+			l->l_state = initial_state;
+			goto again;
+		}
+		return 0;
+	}
 	if ( old == initial_state && new ) {
 #if DEBUG
 		printf("BEGIN TOKEN\n");

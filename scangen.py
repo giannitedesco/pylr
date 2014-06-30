@@ -16,6 +16,12 @@ def builtin_productions(tbl = {}):
 		'__tab__': '\\t',
 		'__space__': ' ',
 		'__hash__': '#',
+		'__lt__': '<',
+		'__gt__': '>',
+		'__lsq__': '[',
+		'__rsq__': ']',
+		'__lbr__': '{',
+		'__rbr__': '}',
 	}
 	for k, v in d.items():
 		p = Production(k)

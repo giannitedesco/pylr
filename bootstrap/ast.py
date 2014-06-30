@@ -83,6 +83,8 @@ class AstLiteral(AstNode):
 	def __init__(self, literal):
 		if literal == '\'':
 			literal = '\\\''
+		elif literal == '\\':
+			literal = '\\\\'
 		self.literal = literal
 		super(AstLiteral, self).__init__()
 	def pretty_print(self, depth = 0):

@@ -17,6 +17,7 @@
 	| <symbol>
 	| <op char>
 	| <hash>
+	| <at sign>
 	| <__space__>
 	| <__tab__>
 	| <__cr__>
@@ -35,6 +36,7 @@
 
 <@identifier> ::=
 	<less than operator>
+	[ <at sign> ]
 	<identifier start>
 	[ <identifier extension>... ]
 	<greater than operator>
@@ -71,6 +73,7 @@
 
 <non whitespace> ::=
 	<letter or number>
+	| <at sign>
 	| <symbol>
 
 <simple Latin letter> ::=
@@ -102,14 +105,16 @@
 	| <comma>
 	| <minus sign>
 	| <solidus>
+	| <reverse solidus>
 	| <colon>
 	| <semicolon>
 	| <equals operator>
 	| <question mark>
 	| <circumflex>
 	| <underscore>
-	| <at sign>
 	| <backtick>
+	| <tilde>
+	| <exclamation point>
 
 <op char> ::=
 	<left paren>
@@ -167,22 +172,22 @@
 	;
 
 <less than operator> ::=
-	<
+	<__lt__>
 
 <equals operator> ::=
 	=
 
 <greater than operator> ::=
-	>
+	<__gt__>
 
 <question mark> ::=
 	?
 
 <left bracket> ::=
-	[
+	<__lsq__>
 
 <right bracket> ::=
-	]
+	<__rsq__>
 
 <circumflex> ::=
 	^
@@ -194,10 +199,10 @@
 	|
 
 <left brace> ::=
-	{
+	<__lbr__>
 
 <right brace> ::=
-	}
+	<__rbr__>
 
 <at sign> ::=
 	@
@@ -207,3 +212,9 @@
 
 <backtick> ::=
 	`
+
+<tilde> ::=
+	~
+
+<exclamation point> ::=
+	!
