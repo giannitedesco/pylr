@@ -86,7 +86,7 @@ class DFA(object):
 		# Check for cycles and resolve all production references
 		r.root = r.root.resolve_links(tbl)
 
-		r.make_final()
+		#r.make_final()
 
 		# Flatten the tree and add the end-of-pattern marker
 		r.root = r.root.flatten()
