@@ -29,6 +29,20 @@ def builtin_productions(tbl = {}):
 		tbl[p.name] = p
 	return tbl
 
+def resolve_ambiguity(dfa):
+	nf = {}
+	while dfa.final:
+		i, f = dfa.final.popitem()
+		if len(f) <= 1:
+			nf[i] = f
+			continue
+		x = sorted([(x.lineno, x) for x in f])
+		f = ', '.join(map(lambda x:'%s'%x.rule_name, sorted(f)))
+		print 'Ambiguity: %s, picked %s'%(f, x[0][1].rule_name)
+		#print x[0][1]
+		nf[i] = [x[0][1]]
+	dfa.final = nf
+
 if __name__ == '__main__':
 	from sys import argv
 
@@ -41,13 +55,9 @@ if __name__ == '__main__':
 
 	dfa.dump_graph('dfa.dot')
 	dfa.optimize()
-	dfa.dump_graph('optimized.dot')
 
-	for f in dfa.final.values():
-		if len(f) <= 1:
-			continue
-		f = ', '.join(map(lambda x:x.rule_name, sorted(f)))
-		print 'Ambiguity: %s'%f
+	resolve_ambiguity(dfa)
+	dfa.dump_graph('optimized.dot')
 
 	dfa.dump_c('lex.c', 'lex.h')
 

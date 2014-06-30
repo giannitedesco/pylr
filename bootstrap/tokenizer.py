@@ -2,17 +2,19 @@ from tokens import *
 
 def read_file(fn):
 	f = open(fn)
+	lno = 1
 	while True:
 		l = f.readline()
 		if l == '':
 			break
 		l = l.rstrip('\r\n')
-		yield l
+		yield (lno, l)
+		lno += 1
 
 def lexemes(fn):
-	for l in read_file(fn):
+	for (lno, l) in read_file(fn):
 		if l == '':
-			yield ''
+			yield (lno, l)
 			continue
 		elif l[0] == '#':
 			continue
@@ -37,9 +39,9 @@ def lexemes(fn):
 					x[0] = x[0][0:-3]
 					x[1] = '... ' + x[1]
 				l = x[1]
-				yield x[0]
+				yield (lno, x[0])
 			else:
-				yield x[0]
+				yield (lno, x[0])
 				l = ''
 				continue
 
@@ -47,36 +49,36 @@ def tokenize(fn):
 	def is_id(l):
 		return len(l) > 2 and l[0] == '<' and l[-1:] == '>'
 	state = 0
-	for l in lexemes(fn):
+	for (lno, l) in lexemes(fn):
 		if l == '':
 			state = 0
 			continue
 		if state == 0:
 			if is_id(l):
 				state = 1
-				yield TokHead(l[1:-1])
+				yield TokHead(l[1:-1], lno)
 			else:
 				raise Exception("expected identifier")
 		elif state == 1:
 			if l == '::=':
 				state = 2
-				yield TokOpRewrite()
+				yield TokOpRewrite(lno)
 			else:
 				raise Exception("expected ::=")
 		elif state == 2:
 			if is_id(l):
-				yield TokIdentifier(l[1:-1])
+				yield TokIdentifier(l[1:-1], lno)
 			elif l == '|':
-				yield TokOpChoice()
+				yield TokOpChoice(lno)
 			elif l == '[':
-				yield TokOpLSquare()
+				yield TokOpLSquare(lno)
 			elif l == ']':
-				yield TokOpRSquare()
+				yield TokOpRSquare(lno)
 			elif l == '{':
-				yield TokOpLBrace()
+				yield TokOpLBrace(lno)
 			elif l == '}':
-				yield TokOpRBrace()
+				yield TokOpRBrace(lno)
 			elif l == '...':
-				yield TokOpEllipsis()
+				yield TokOpEllipsis(lno)
 			else:
-				yield TokLiteral(l)
+				yield TokLiteral(l, lno)

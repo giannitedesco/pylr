@@ -58,8 +58,9 @@ class AstEpsilon(AstNode):
 		return AstEpsilon()
 
 class AstAccept(AstNode):
-	def __init__(self, name):
+	def __init__(self, name, lineno):
 		self.rule_name = name
+		self.lineno = lineno
 		super(AstAccept, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
@@ -75,7 +76,7 @@ class AstAccept(AstNode):
 	def _calc_lastpos(self):
 		return set({self.position})
 	def copy(self):
-		return AstAccept(self.rule_name)
+		return AstAccept(self.rule_name, self.lineno)
 	def finals(self, out = []):
 		out.append(self)
 

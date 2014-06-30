@@ -283,7 +283,6 @@ class DFA(object):
 		else:
 			c.transition_func(self)
 		c.accept_table(self)
-		c.action_table(self)
 
 		h = HFile(hfn)
 		h.token_enum(self)

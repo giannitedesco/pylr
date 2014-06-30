@@ -3,13 +3,14 @@ from ast import *
 from tokenizer import tokenize
 
 class Production(object):
-	def __init__(self, name, final = False):
+	def __init__(self, name, final = False, action = None, lineno = 0):
 		self.name = name
 		self.root = None
 		self.pstack = []
 		self.stack = []
 		self.nchoice = 0
 		self.natom = 0
+		self.lineno = lineno
 		self.__ready = False
 		self.__last = None
 		self.__cb = {
@@ -24,6 +25,7 @@ class Production(object):
 		}
 
 		self.final = final
+		self.action = action
 		super(Production, self).__init__()
 
 	def make_final(self):
@@ -31,7 +33,8 @@ class Production(object):
 		if isinstance(self.root, AstConcat) and \
 				isinstance(self.root.b, AstAccept):
 			return
-		self.root = AstConcat(self.root, AstAccept(self.name))
+		self.root = AstConcat(self.root,
+				AstAccept(self.name, self.lineno))
 
 	def __binop(self, cls):
 		b = self.stack.pop()
@@ -134,6 +137,26 @@ class Production(object):
 	def __repr__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.name)
 
+def get_parms(t):
+	kw = {}
+	if t.name[0] == '@':
+		name = t.name[1:]
+		kw['final'] = True
+		kw['action'] = 'discard'
+	else:
+		name = t.name
+		kw['final'] = False
+
+	x = name.split('{', 1)
+	if len(x) > 1 and x[1] and x[1][-1] == '}':
+		name = x[0]
+		kw['action'] = x[1][:-1]
+	
+	kw['lineno'] = t.lineno
+
+	#print '%s -> %s %s'%(t.name, name, kw)
+	return (name, kw)
+
 def parse(fn):
 	p = None
 	for t in tokenize(fn):
@@ -141,15 +164,10 @@ def parse(fn):
 			if p is not None:
 				p.eof()
 				yield p
-			if t.name[0] == '@':
-				name = t.name[1:]
-				final = True
-			else:
-				name = t.name
-				final = False
-			p = Production(name, final)
+			(name, kwargs) = get_parms(t)
+			p = Production(name, **kwargs)
 		elif isinstance(t, TokLiteral):
-			map(lambda x:p.feed(TokLiteral(x)), t.name)
+			map(lambda x:p.feed(TokLiteral(x, t.lineno)), t.name)
 		else:
 			p.feed(t)
 	if p is not None:

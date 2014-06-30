@@ -24,11 +24,14 @@ class HFile(file):
 
 	def token_enum(self, dfa):
 		self.write('enum tok {\n')
+		self.write('\tTOK_UNKNOWN,\n')
 		s = set()
 		for v in dfa.final.values():
 			s.update([x for x in v])
-		for x in s:
-			self.write('\tTOK_%s,\n'%x.rule_name.upper().replace(' ', '_'))
+		s = sorted([(x.lineno, x.rule_name) for x in s])
+		for (lineno,x) in s:
+			self.write('\tTOK_%s,\n'%\
+					x.upper().replace(' ', '_'))
 		self.write('};\n\n')
 		return
 	def decls(self):
@@ -116,23 +119,16 @@ class CFile(file):
 		self.write('static const dfa_state_t ')
 		self.write('accept[%u] = {\n'%(dfa.num_states + 1))
 		for i in xrange(dfa.num_states):
-			self.write('\t[ %u ] = %u,\n'%(
-					i + 1,
-					int(i in dfa.final)))
+			if i in dfa.final:
+				x = dfa.final[i][0]
+				v = x.rule_name.upper().replace(' ', '_')
+			else:
+				continue
+			self.write('\t[ %u ] = TOK_%s,\n'%(i + 1, v))
 		self.write('};\n\n')
 
 		self.write('static const dfa_state_t ')
 		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
-
-	def action_table(self, dfa):
-		self.write('static const char * const ')
-		self.write('action[%u] = {\n'%(dfa.num_states + 1))
-		for i,v in dfa.final.items():
-			self.write('\t[ %u ] = "%s",\n'%(
-					i + 1,
-					'|'.join(map(lambda x:x.rule_name,
-						sorted(dfa.final[i])))))
-		self.write('};\n\n')
 
 	def __del__(self):
 		self.close()

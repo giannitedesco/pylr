@@ -75,7 +75,7 @@ static int nul_terminate(struct _lexer *l)
 	return to_buf(l, '\0');
 }
 
-static int emit(struct _lexer *l)
+static int emit(struct _lexer *l, enum tok type)
 {
 	struct _tok tok;
 
@@ -85,6 +85,7 @@ static int emit(struct _lexer *l)
 	tok.t_file = l->l_name;
 	tok.t_line = l->l_line;
 	tok.t_col = l->l_col;
+	tok.t_type = type;
 
 	tok.t_u.tu_identifier = l->l_buf;
 
@@ -114,7 +115,7 @@ again:
 //		if ( strcmp(action[old], "comment") &&
 //				strcmp(action[old], "whitespace"))
 #endif
-		if ( !emit(l) )
+		if ( !emit(l, accept[old]) )
 			return 9;
 		clear_buf(l);
 	}
@@ -186,7 +187,7 @@ void lexer_free(lexer_t l)
 
 static int tok_cb(tok_t tok, void *priv)
 {
-	printf("%s\n", tok->t_u.tu_identifier);
+	printf("%u: %s\n", tok->t_type, tok->t_u.tu_identifier);
 	return 1;
 }
 
