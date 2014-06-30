@@ -77,8 +77,10 @@ again:
 		printf("END TOKEN: %s '%.*s'\n\n",
 			action[old], (int)l->l_len, l->l_buf);
 #else
-		//printf("token: %s '%.*s'\n",
-		//	action[old], (int)l->l_len, l->l_buf);
+		if ( strcmp(action[old], "comment") &&
+				strcmp(action[old], "whitespace"))
+		printf("token: %s '%.*s'\n",
+			action[old], (int)l->l_len, l->l_buf);
 #endif
 		clear_buf(l);
 	}

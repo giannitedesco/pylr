@@ -28,7 +28,7 @@ class HFile(file):
 		for v in dfa.final.values():
 			s.update([x for x in v])
 		for x in s:
-			self.write('\tTOK_%s,\n'%x.rule_name.upper())
+			self.write('\tTOK_%s,\n'%x.rule_name.upper().replace(' ', '_'))
 		self.write('};\n\n')
 		return
 	def decls(self):

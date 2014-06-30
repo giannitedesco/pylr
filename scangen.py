@@ -40,7 +40,7 @@ if __name__ == '__main__':
 	for f in dfa.final.values():
 		if len(f) <= 1:
 			continue
-		f = ', '.join(map(lambda x:x.rule_name, f))
+		f = ', '.join(map(lambda x:x.rule_name, sorted(f)))
 		print 'Ambiguity: %s'%f
 
 	dfa.dump_c('lex.c', 'lex.h')
