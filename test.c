@@ -72,6 +72,11 @@ static int lexer_symbol(lexer_t l, char sym)
 again:
 	old = l->l_state;
 	new = next_symbol(old, sym);
+	if ( old == initial_state && !new ) {
+		fprintf(stderr, "%s: unexpected \\x%.2x: line %u, col %u\n",
+			l->l_name, sym, l->l_line, l->l_col);
+		return 0;
+	}
 	if ( old && accept[old] && (!new || !accept[new]) ) {
 #if DEBUG
 		printf("END TOKEN: %s '%.*s'\n\n",
