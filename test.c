@@ -19,7 +19,8 @@ struct _lexer {
 	token_cb l_cb;
 	void *l_priv;
 	char *l_buf;
-	size_t l_len;
+	unsigned int l_len;
+	unsigned int l_max;
 	unsigned int l_line;
 	unsigned int l_col;
 	dfa_state_t l_state;
@@ -44,13 +45,14 @@ out:
 
 static int to_buf(lexer_t l, char sym)
 {
-	if ( !(l->l_len % BUF_INCREMENT) ) {
+	if ( l->l_len >= l->l_max ) {
 		char *new;
 		new = realloc(l->l_buf, l->l_len + BUF_INCREMENT);
 		if ( NULL== new )
 			return 0;
 		l->l_buf = new;
-		//DEBUG("upped buffer to %zu bytes", l->l_len + BUF_INCREMENT);
+		l->l_max = l->l_len + BUF_INCREMENT;
+		//printf("upped buffer to %u bytes\n", l->l_len + BUF_INCREMENT);
 	}
 	l->l_buf[l->l_len++] = sym;
 	return 1;
@@ -58,12 +60,10 @@ static int to_buf(lexer_t l, char sym)
 
 static void clear_buf(lexer_t l)
 {
-	free(l->l_buf);
-	l->l_buf = NULL;
 	l->l_len = 0;
 }
 
-#define DEBUG 1
+#define DEBUG 0
 static int lexer_symbol(lexer_t l, char sym)
 {
 	unsigned int old, new;
