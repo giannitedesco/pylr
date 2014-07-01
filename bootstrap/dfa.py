@@ -241,7 +241,7 @@ class DFA(object):
 
 		obsolete = {}
 		for b in S:
-			if len(b) == 1:
+			if len(b) <= 1:
 				continue
 			i = iter(b)
 			v = i.next()
