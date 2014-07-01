@@ -36,7 +36,20 @@ class HFile(file):
 		return
 	def decls(self):
 		self.write(\
-'''typedef struct _tok *tok_t;
+'''struct _tok {
+	const char *t_file;
+	unsigned int t_line;
+	unsigned int t_col;
+	enum tok t_type;
+	union {
+		const char *tu_identifier;
+		unsigned long long tu_uint;
+		long long int tu_int;
+		double tu_float;
+	}t_u;
+};
+
+typedef struct _tok *tok_t;
 typedef int(*token_cb)(tok_t tok, void *priv);
 typedef struct _lexer *lexer_t;
 

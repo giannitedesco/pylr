@@ -8,18 +8,6 @@
 #include "lex.h"
 #include "lex.c"
 
-struct _tok {
-	const char *t_file;
-	unsigned int t_line;
-	unsigned int t_col;
-	enum tok t_type;
-	union {
-		const char *tu_identifier;
-		unsigned long long tu_int;
-		double tu_float;
-	}t_u;
-};
-
 #define BUF_INCREMENT 128
 struct _lexer {
 	const char *l_name;
@@ -92,7 +80,6 @@ static int emit(struct _lexer *l, enum tok type)
 	return (*l->l_cb)(&tok, l->l_priv);
 }
 
-#define DEBUG 0
 static int lexer_symbol(lexer_t l, char sym)
 {
 	unsigned int old, new;
@@ -108,16 +95,10 @@ again:
 	old = l->l_state;
 	new = l->l_state = next_symbol(old, sym);
 	if ( old && accept[old] && (!new || !accept[new]) ) {
-#if DEBUG
-		printf("END TOKEN: %s '%.*s'\n\n",
-			action[old], (int)l->l_len, l->l_buf);
-#else
-//		if ( strcmp(action[old], "comment") &&
-//				strcmp(action[old], "whitespace"))
-#endif
-		if ( !emit(l, accept[old]) )
-			return 9;
+		int ret;
+		ret = emit(l, accept[old]);
 		clear_buf(l);
+		return ret;
 	}
 
 	if ( !new ) {
@@ -133,28 +114,12 @@ again:
 		}
 		return 0;
 	}
+
 	if ( old == initial_state && new ) {
-#if DEBUG
-		printf("BEGIN TOKEN\n");
-#endif
 		clear_buf(l);
 	}
+
 	to_buf(l, sym);
-
-#if DEBUG
-	if ( sym == '\n' ) {
-		printf("symbol is '\\n' : ");
-	}else if ( sym == '\t' ) {
-		printf("symbol is '\\t' : ");
-	}else{
-		printf("symbol is '%c'  : ", sym);
-	}
-
-	printf("%u (accept=%u reject=%u) -> "
-		"%u (accept=%u reject=%u)\n",
-		old, accept[old], old == 0,
-		new, accept[new], new == 0);
-#endif
 
 	if ( !l->l_state )
 		l->l_state = initial_state;
