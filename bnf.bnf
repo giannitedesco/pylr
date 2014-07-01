@@ -7,7 +7,7 @@
 	| <whitespace>
 	| <comment>
 
-<@comment> ::=
+<comment> ::=
 	<hash> [ <anything>... ] <__lf__>
 
 <anything> ::=
@@ -22,7 +22,7 @@
 	| <__tab__>
 	| <__cr__>
 
-<@whitespace> ::=
+<whitespace> ::=
 	<whitespace char> <optional whitespace>
 
 <optional whitespace> ::=
@@ -49,21 +49,23 @@
 	<letter or number>
 	| <connector>
 	| <space>
-
-<@literal> ::=
-	<non whitespace> [ <non whitespace>... ]
+	| <left brace>
+	| <right brace>
 
 <@operator> ::=
 	<production operator>
 	| <ellipsis>
 	| <op char>
 
+<@literal> ::=
+	<non whitespace> [ <non whitespace>... ]
+
 # don't get confused with an actual <production operator>
-<production operator> ::=
+<@production operator> ::=
 	: : =
 
 # Instead of ... to not get confused with an actual <ellipsis>
-<ellipsis> ::=
+<@ellipsis> ::=
 	. . .
 
 <letter or number> ::=

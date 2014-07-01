@@ -21,14 +21,14 @@ CFLAGS := -g -pipe -O2 -Wall \
 
 TEST_BIN := test
 TEST_LIBS := 
-TEST_OBJ = test.o
+TEST_OBJ := test.o lex.o
 
-LEX_TBL := lex.c
+AUTO_GEN := lex.c
 
 ALL_BIN := $(TEST_BIN)
 ALL_OBJ := $(TEST_OBJ)
 ALL_DEP := $(patsubst %.o, .%.d, $(ALL_OBJ))
-ALL_TARGETS := $(ALL_BIN)
+ALL_TARGETS := $(ALL_BIN) $(AUTO_GEN)
 
 TARGET: all
 
@@ -52,8 +52,12 @@ $(TEST_BIN): $(TEST_OBJ)
 	@echo " [LINK] $@"
 	@$(CC) $(CFLAGS) -o $@ $(TEST_OBJ) $(TEST_LIBS)
 
+test.c: lex.c
+lex.c: bnf.bnf
+	./scangen.py token bnf.bnf
+
 clean:
-	rm -f $(ALL_TARGETS) $(GRAMMAR) $(ALL_OBJ) $(ALL_DEP) tagops.c
+	rm -f $(ALL_TARGETS) $(GRAMMAR) $(ALL_OBJ) $(ALL_DEP) tagops.c lex.h
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(ALL_DEP)

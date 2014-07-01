@@ -284,6 +284,7 @@ class DFA(object):
 			c.transition_func(self)
 		c.accept_table(self)
 		c.action_table(self)
+		c.boilerplate()
 
 		h = HFile(hfn)
 		h.token_enum(self)
