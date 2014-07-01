@@ -34,7 +34,9 @@ class Production(object):
 				isinstance(self.root.b, AstAccept):
 			return
 		self.root = AstConcat(self.root,
-				AstAccept(self.name, self.lineno))
+				AstAccept(self.name,
+						self.lineno,
+						self.action))
 
 	def __binop(self, cls):
 		b = self.stack.pop()

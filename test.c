@@ -75,7 +75,7 @@ static int emit(struct _lexer *l, enum tok type)
 	tok.t_col = l->l_col;
 	tok.t_type = type;
 
-	tok.t_u.tu_identifier = l->l_buf;
+	tok.t_u.tu_str = l->l_buf;
 
 	return (*l->l_cb)(&tok, l->l_priv);
 }
@@ -93,36 +93,50 @@ static int lexer_symbol(lexer_t l, char sym)
 
 again:
 	old = l->l_state;
-	new = l->l_state = next_symbol(old, sym);
+	new = l->l_state = next_state(old, sym);
+
+	/* if we move from an accepting state to a non-accepting state
+	 * then emit a token. This implements the greedy match heuristic.
+	*/
 	if ( old && accept[old] && (!new || !accept[new]) ) {
 		int ret;
 		ret = emit(l, accept[old]);
 		clear_buf(l);
+		l->l_state = initial_state;
 		return ret;
 	}
 
-	if ( !new ) {
+	if ( new ) {
+		/* if we move from initial state to a non rejecting state
+		 * then this is the start of a new token.
+		*/
+		if ( old == initial_state ) {
+			clear_buf(l);
+		}
+
+		/* buffer up every character so long as we're in a
+		 * non-rejecting state
+		*/
+		to_buf(l, sym);
+	}else{
 		if ( old == initial_state ) {
 			fprintf(stderr, "%s: unexpected \\x%.2x(%c): "
 				"line %u, col %u\n",
 				l->l_name, sym,
 				isprint(sym) ? sym : sym,
 				l->l_line, l->l_col);
+			return 0;
 		}else{
+			/* we move from a non-accepting state to a rejecting
+			 * state, so we encountered a valid token for which
+			 * there was no action / discard action. So in this
+			 * case we pretend we were in the initial state all
+			 * along, to start on the next token.
+			*/
 			l->l_state = initial_state;
 			goto again;
 		}
-		return 0;
 	}
-
-	if ( old == initial_state && new ) {
-		clear_buf(l);
-	}
-
-	to_buf(l, sym);
-
-	if ( !l->l_state )
-		l->l_state = initial_state;
 
 	return 1;
 }
@@ -152,7 +166,7 @@ void lexer_free(lexer_t l)
 
 static int tok_cb(tok_t tok, void *priv)
 {
-	printf("%u: %s\n", tok->t_type, tok->t_u.tu_identifier);
+	printf("%u: %s\n", tok->t_type, tok->t_u.tu_str);
 	return 1;
 }
 

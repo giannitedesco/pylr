@@ -42,7 +42,7 @@ class HFile(file):
 	unsigned int t_col;
 	enum tok t_type;
 	union {
-		const char *tu_identifier;
+		const char *tu_str;
 		unsigned long long tu_uint;
 		long long int tu_int;
 		double tu_float;
@@ -103,14 +103,14 @@ class CFile(file):
 						(sym, post + 1))
 			self.write('\t},\n')
 		self.write('};\n\n')
-		self.write('static inline dfa_state_t next_symbol')
+		self.write('static inline dfa_state_t next_state')
 		self.write('(dfa_state_t state, char sym)\n')
 		self.write('{\n')
 		self.write('\treturn trans[state][(uint8_t)sym];\n')
 		self.write('}\n\n')
 
 	def transition_func(self, dfa):
-		self.write('static inline dfa_state_t next_symbol')
+		self.write('static inline dfa_state_t next_state')
 		self.write('(dfa_state_t state, char sym)\n')
 		self.write('{\n')
 		self.write('\tswitch(state) {\n')
@@ -142,6 +142,24 @@ class CFile(file):
 
 		self.write('static const dfa_state_t ')
 		self.write('initial_state = %s;\n\n'%(dfa.initial + 1))
+	
+	def action_table(self, dfa):
+		s = set()
+		for v in dfa.final.values():
+			s.update([x for x in v])
+		m = {}
+		for a, l, n in sorted([(x.action,\
+					x.lineno,\
+					x.rule_name) for x in s]):
+			if a == 'discard':
+				continue
+			s = 'TOK_%s'%(n.upper().replace(' ', '_'))
+			m.setdefault(a, []).append(s)
+
+		for k in sorted(m.keys()):
+			for v in m[k]:
+				print 'case %s:'%v
+			print '\t%s;'%k
 
 	def __del__(self):
 		self.close()
