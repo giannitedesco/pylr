@@ -9,7 +9,21 @@
 
 static int tok_cb(tok_t tok, void *priv)
 {
-	printf("%u: %s\n", tok->t_type, tok->t_u.tu_str);
+	switch(tok->t_type) {
+#ifdef TOK_LITERAL
+	case TOK_LITERAL:
+		printf("TOK_LITERAL: %s\n", tok->t_u.tu_str);
+		break;
+#endif
+#ifdef TOK_IDENTIFIER
+	case TOK_IDENTIFIER:
+		printf("TOK_IDENTIFIER: %s\n", tok->t_u.tu_str);
+		break;
+#endif
+	default:
+		printf("tok type %u\n", tok->t_type);
+		break;
+	}
 	return 1;
 }
 
