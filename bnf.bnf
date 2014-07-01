@@ -34,7 +34,7 @@
 <space> ::=
 	<__space__>
 
-<@identifier> ::=
+<@identifier{str}> ::=
 	<less than operator>
 	[ <at sign> ]
 	<identifier start>
