@@ -393,7 +393,7 @@ def main(argv):
 	EXIT_FAILURE = 1
 
 	g = Grammar()
-	for t in read_terminals('include/tok.h'):
+	for t in read_terminals(argv[3]):
 		g.symbol(t)
 
 	start_sym = None

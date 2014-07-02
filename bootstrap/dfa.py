@@ -275,7 +275,7 @@ class DFA(object):
 			for sym, post in sorted(d.items()):
 				g.add_edge(pre + 1, post + 1, sym)
 
-	def dump_c(self, cfn, hfn, table = True):
+	def dump_c(self, cfn, hfn, table = True, includedir = '.'):
 		c = CFile(cfn, incl=[hfn])
 		c.state_type(self.num_states)
 		if table:
@@ -285,6 +285,6 @@ class DFA(object):
 		c.accept_table(self)
 		c.boilerplate(self)
 
-		h = HFile(hfn)
+		h = HFile(hfn, includedir = includedir)
 		h.token_enum(self)
 		h.decls()

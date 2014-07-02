@@ -22,6 +22,7 @@ def builtin_productions(tbl = {}):
 		'__rsq__': ']',
 		'__lbr__': '{',
 		'__rbr__': '}',
+		'__vbar__': '|',
 	}
 	for k, v in d.items():
 		p = Production(k)
@@ -59,6 +60,6 @@ if __name__ == '__main__':
 	resolve_ambiguity(dfa)
 	dfa.dump_graph('optimized.dot')
 
-	dfa.dump_c('lex.c', 'lex.h')
+	dfa.dump_c('lex.c', 'lex.h', includedir='./include')
 
 	raise SystemExit, 0
