@@ -324,12 +324,17 @@ again:
 	/* if we move from an accepting state to a non-accepting state
 	 * then emit a token. This implements the greedy match heuristic.
 	*/
-	if ( old && accept[old] && (!new || !accept[new]) ) {
+	if ( old && accept[old] && (!new /*|| !accept[new] */) ) {
 		int ret;
 		ret = emit(l, accept[old]);
 		clear_buf(l);
+
 		l->l_state = initial_state;
-		return ret;
+		if ( !to_buf(l, sym) )
+			return 0;
+		if ( !ret )
+			return 0;
+		goto again;
 	}
 
 	if ( new ) {
@@ -343,7 +348,8 @@ again:
 		/* buffer up every character so long as we're in a
 		 * non-rejecting state
 		*/
-		to_buf(l, sym);
+		if ( !to_buf(l, sym) )
+			return 0;
 	}else{
 		if ( old == initial_state ) {
 			fprintf(stderr, "%s: unexpected \\\\x%.2x(%c): "
