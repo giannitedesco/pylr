@@ -1,58 +1,58 @@
 #!/usr/bin/python
 # vim: set fileencoding=utf8 :
 
-class Symbol(object):
+class Sym(object):
 	__val = 0
 	def __init__(self, name, val = None):
 		self.name = name
 		if val is None:
-			self.val = Symbol.__val
-			Symbol.__val += 1
+			self.val = Sym.__val
+			Sym.__val += 1
 		else:
 			self.val = val
-		super(Symbol, self).__init__()
+		super(Sym, self).__init__()
 	def __str__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.name)
 	def __repr__(self):
 		return '%s(%s)'%(self.__class__.__name__, self.name)
 	def __cmp__(a, b):
-		if not isinstance(b, Symbol):
+		if not isinstance(b, Sym):
 			raise TypeError
 		return a.val.__cmp__(b.val)
 
-class Epsilon(Symbol):
+class SymEpsilon(Sym):
 	__instance = None
 	def __new__(cls, *args, **kwargs):
 		if cls.__instance is None:
-			cls.__instance = super(Epsilon, cls).__new__(cls, \
+			cls.__instance = super(SymEpsilon, cls).__new__(cls, \
 							*args, **kwargs)
 		return cls.__instance
 	def __init__(self):
-		super(Epsilon, self).__init__('ε', -1)
+		super(SymEpsilon, self).__init__('ε', -1)
 	def __str__(self):
 		return self.name
 	def __repr__(self):
 		return self.name
 
-class Eof(Symbol):
+class SymEof(Sym):
 	__instance = None
 	def __new__(cls, *args, **kwargs):
 		if cls.__instance is None:
-			cls.__instance = super(Eof, cls).__new__(cls, \
+			cls.__instance = super(SymEof, cls).__new__(cls, \
 							*args, **kwargs)
 		return cls.__instance
 	def __init__(self):
-		super(Eof, self).__init__('$', -2)
+		super(SymEof, self).__init__('$', -2)
 	def __str__(self):
 		return self.name
 	def __repr__(self):
 		return self.name
 
-class Terminal(Symbol):
+class Terminal(Sym):
 	def __init__(self, name):
 		super(Terminal, self).__init__(name)
 
-class NonTerminal(Symbol):
+class NonTerminal(Sym):
 	def __init__(self, name):
 		super(NonTerminal, self).__init__(name)
 
@@ -67,7 +67,7 @@ class Production(object):
 			self.rule(r)
 	def rule(self, r):
 		for x in r:
-			if not isinstance(x, Symbol):
+			if not isinstance(x, Sym):
 				raise TypeError
 		self.rules.append(r)
 	def __or__(a, b):
@@ -129,7 +129,7 @@ class Grammar(object):
 		for s in self.sym.values():
 			if isinstance(s, NonTerminal) and \
 					not self.p.has_key(s.name):
-				self.p[s.name] = Production(s, [Epsilon()])
+				self.p[s.name] = Production(s, [SymEpsilon()])
 
 	def eliminate_immediate_left_recursion(self, p):
 		prime = NonTerminal(p.nt.name + "'")
@@ -150,7 +150,7 @@ class Grammar(object):
 		p.rules = new
 		#print p
 		self.production(np)
-		np.rules.append([Epsilon()])
+		np.rules.append([SymEpsilon()])
 		self.symbol(prime)
 		#print np 
 		#print
@@ -234,9 +234,9 @@ class Parser(object):
 					n = r[i + 1]
 					if isinstance(n, NonTerminal):
 						tmp = self.FIRST[n.name]
-						if Epsilon() in tmp:
+						if SymEpsilon() in tmp:
 							rec.append(n)
-						s |= tmp - set([Epsilon()])
+						s |= tmp - set([SymEpsilon()])
 					else:
 						s |= set([n])
 			f[nt.name] = s
@@ -250,7 +250,7 @@ class Parser(object):
 			if not isinstance(nt, NonTerminal):
 				continue
 			do_FOLLOW(nt, f)
-		f['S'] = set([Eof()])
+		f['S'] = set([SymEof()])
 
 		for k, v in sorted(f.items()):
 			if v & self.FIRST[k]:
@@ -271,8 +271,8 @@ class Parser(object):
 					s = self.FIRST[first.name]
 				else:
 					s = set([first])
-				if Epsilon() in s:
-					s -= set([Epsilon()])
+				if SymEpsilon() in s:
+					s -= set([SymEpsilon()])
 					s |= self.FOLLOW[A.name]
 				for a in s:
 					if t.has_key((A,a)):
@@ -290,9 +290,9 @@ class Parser(object):
 		print 'writing', fn
 
 		def cname(s):
-			if s is Epsilon():
+			if s is SymEpsilon():
 				return 'SYM_EPSILON'
-			if s is Eof():
+			if s is SymEof():
 				return 'SYM_EOF'
 			if isinstance(s, NonTerminal):
 				return 'SYM_' + s.name.replace("'", '_PRIME')
@@ -304,8 +304,8 @@ class Parser(object):
 		f.write('#define _%s_H\n'%name.upper())
 		f.write('\n')
 
-		f.write('#define SYM_EOF %d\n'%Eof().val)
-		f.write('#define SYM_EPSILON %d\n'%Epsilon().val)
+		f.write('#define SYM_EOF %d\n'%SymEof().val)
+		f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
 		for nt in sorted(self.g.sym.values()):
 			if not isinstance(nt, NonTerminal):
 				continue
@@ -382,7 +382,7 @@ def read_productions(g, fn):
 		l = l.split()
 		assert(l[1] == '->')
 		if not l[2:]:
-			r = [Epsilon()]
+			r = [SymEpsilon()]
 		else:
 			r = map(lambda x:g[x], l[2:])
 		p = Production(g[l[0]], r)
@@ -408,7 +408,7 @@ def main(argv):
 	# Add start symbol as RealStart then EOF
 	print 'Taking %s as start symbol'%start_sym
 	g.symbol(NonTerminal('S'))
-	g.production(Production(g['S'], [g[start_sym], Eof()]))
+	g.production(Production(g['S'], [g[start_sym], SymEof()]))
 
 	g.construct_markers()
 	g.eliminate_left_recursion()
