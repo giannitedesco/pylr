@@ -275,8 +275,12 @@ class DFA(object):
 			for sym, post in sorted(d.items()):
 				g.add_edge(pre + 1, post + 1, sym)
 
-	def dump_c(self, cfn, hfn, table = True, includedir = '.'):
-		c = CFile(cfn, incl=[hfn])
+	def dump_c(self, base_name = 'lex', srcdir = '.',
+				includedir = '.', table = True):
+
+		cfn = base_name + '.c'
+		hfn = base_name + '.h'
+		c = CFile(cfn, incl = [hfn], srcdir = srcdir)
 		c.state_type(self.num_states)
 		if table:
 			c.transition_table(self)

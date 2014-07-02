@@ -35,7 +35,7 @@ __all__ = [
 	'AstChoice',
 
 	# parser.py
-	'Production',
+	'ParseTree',
 	'parse',
 
 	# graph.py
@@ -52,7 +52,7 @@ __all__ = [
 from tokens import *
 from tokenizer import tokenize
 from ast import *
-from parser import Production, parse
+from parser import ParseTree, parse
 from dfa import DFA
 from graph import Graph
 from c import CFile, HFile

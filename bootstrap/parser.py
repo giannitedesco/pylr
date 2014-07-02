@@ -2,7 +2,7 @@ from tokens import *
 from ast import *
 from tokenizer import tokenize
 
-class Production(object):
+class ParseTree(object):
 	def __init__(self, name, final = False, action = None, lineno = 0):
 		self.name = name
 		self.root = None
@@ -14,19 +14,19 @@ class Production(object):
 		self.__ready = False
 		self.__last = None
 		self.__cb = {
-				TokOpChoice: Production.__chose,
-				TokLiteral: Production.__atom,
-				TokIdentifier: Production.__atom,
-				TokOpEllipsis: Production.__ellipsis,
-				TokOpLSquare: Production.__lparen,
-				TokOpRSquare: Production.__rparen,
-				TokOpLBrace: Production.__lparen,
-				TokOpRBrace: Production.__rparen,
+				TokOpChoice: ParseTree.__chose,
+				TokLiteral: ParseTree.__atom,
+				TokIdentifier: ParseTree.__atom,
+				TokOpEllipsis: ParseTree.__ellipsis,
+				TokOpLSquare: ParseTree.__lparen,
+				TokOpRSquare: ParseTree.__rparen,
+				TokOpLBrace: ParseTree.__lparen,
+				TokOpRBrace: ParseTree.__rparen,
 		}
 
 		self.final = final
 		self.action = action
-		super(Production, self).__init__()
+		super(ParseTree, self).__init__()
 
 	def make_final(self):
 		self.final = True
@@ -167,7 +167,7 @@ def parse(fn):
 				p.eof()
 				yield p
 			(name, kwargs) = get_parms(t)
-			p = Production(name, **kwargs)
+			p = ParseTree(name, **kwargs)
 		elif isinstance(t, TokLiteral):
 			map(lambda x:p.feed(TokLiteral(x, t.lineno)), t.name)
 		else:

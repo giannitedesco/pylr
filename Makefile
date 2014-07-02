@@ -54,7 +54,8 @@ $(TEST_BIN): $(TEST_OBJ)
 
 test.c: lex.c
 lex.c: bnf.bnf
-	./scangen.py token bnf.bnf
+	./scangen.py token bnf.bnf --base-name=lex
+lex.h: lex.c
 
 clean:
 	rm -f $(ALL_TARGETS) $(GRAMMAR) $(ALL_OBJ) $(ALL_DEP) tagops.c lex.h
