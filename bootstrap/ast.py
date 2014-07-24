@@ -11,6 +11,8 @@ class AstNode(object):
 	# default is for leaves
 	def resolve_links(self, tbl = {}, v = set()):
 		return self
+	def links(self, tbl = {}, v = set()):
+		pass
 	def flatten(self):
 		return self
 	def leaves(self, out = []):
@@ -107,7 +109,9 @@ class AstLink(AstNode):
 		super(AstLink, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s-> %s'%(pfx, self.p)
+		print '%s-> %s'%(pfx, self.symbol_name())
+	def symbol_name(self):
+		return self.p.upper().replace(' ', '_')
 	def resolve_links(self, tbl = {}, v = set()):
 		if self.p in v:
 			raise Exception('Cycle on %s'%self.p)
@@ -116,6 +120,14 @@ class AstLink(AstNode):
 		ret = tbl[self.p].root.resolve_links(tbl, v).copy()
 		v.remove(self.p)
 		return ret;
+	def links(self, tbl = {}, v = set()):
+		if self.p in v:
+			return
+		v.add(self.p)
+		tgt = tbl[self.p]
+		if hasattr(tgt, 'root'):
+			tgt.root.links(tbl, v)
+		return v
 
 class AstUnary(AstNode):
 	def __init__(self, op):
@@ -132,6 +144,9 @@ class AstUnary(AstNode):
 	def resolve_links(self, tbl = {}, v = set()):
 		self.op = self.op.resolve_links(tbl, v)
 		return self
+	def links(self, tbl = {}, v = set()):
+		self.op.links(tbl, v)
+		return v
 	def flatten(self):
 		self.op = self.op.flatten()
 		return self
@@ -158,6 +173,10 @@ class AstBinary(AstNode):
 		self.a = self.a.resolve_links(tbl, v)
 		self.b = self.b.resolve_links(tbl, v)
 		return self
+	def links(self, tbl = {}, v = set()):
+		self.a.links(tbl, v)
+		self.b.links(tbl, v)
+		return v
 	def flatten(self):
 		self.a = self.a.flatten()
 		self.b = self.b.flatten()

@@ -1,173 +1,6 @@
 #!/usr/bin/python
-# vim: set fileencoding=utf8 :
 
-class Sym(object):
-	__val = 0
-	def __init__(self, name, val = None):
-		self.name = name
-		if val is None:
-			self.val = Sym.__val
-			Sym.__val += 1
-		else:
-			self.val = val
-		super(Sym, self).__init__()
-	def __str__(self):
-		return '%s(%s)'%(self.__class__.__name__, self.name)
-	def __repr__(self):
-		return '%s(%s)'%(self.__class__.__name__, self.name)
-	def __cmp__(a, b):
-		if not isinstance(b, Sym):
-			raise TypeError
-		return a.val.__cmp__(b.val)
-
-class SymEpsilon(Sym):
-	__instance = None
-	def __new__(cls, *args, **kwargs):
-		if cls.__instance is None:
-			cls.__instance = super(SymEpsilon, cls).__new__(cls, \
-							*args, **kwargs)
-		return cls.__instance
-	def __init__(self):
-		super(SymEpsilon, self).__init__('ε', -1)
-	def __str__(self):
-		return self.name
-	def __repr__(self):
-		return self.name
-
-class SymEof(Sym):
-	__instance = None
-	def __new__(cls, *args, **kwargs):
-		if cls.__instance is None:
-			cls.__instance = super(SymEof, cls).__new__(cls, \
-							*args, **kwargs)
-		return cls.__instance
-	def __init__(self):
-		super(SymEof, self).__init__('$', -2)
-	def __str__(self):
-		return self.name
-	def __repr__(self):
-		return self.name
-
-class Terminal(Sym):
-	def __init__(self, name):
-		super(Terminal, self).__init__(name)
-
-class NonTerminal(Sym):
-	def __init__(self, name):
-		super(NonTerminal, self).__init__(name)
-
-class Production(object):
-	def __init__(self, nt, r = None):
-		super(Production, self).__init__()
-		if not isinstance(nt, NonTerminal):
-			raise TypeError
-		self.nt = nt
-		self.rules = []
-		if r is not None:
-			self.rule(r)
-	def rule(self, r):
-		for x in r:
-			if not isinstance(x, Sym):
-				raise TypeError
-		self.rules.append(r)
-	def __or__(a, b):
-		if a.nt is not b.nt:
-			raise ValueError
-		p = Production(a.nt)
-		p.rules = a.rules + b.rules
-		return p
-	def __str__(self):
-		return '%s(%s -> %s)'%(self.__class__.__name__,
-						self.nt, self.rules)
-	def __repr__(self):
-		return '%s(%s -> %s)'%(self.__class__.__name__,
-						self.nt, self.rules)
-	def __iter__(self):
-		return iter(self.rules)
-
-class Grammar(object):
-	def __init__(self):
-		super(Grammar, self).__init__()
-		self.sym = {}
-		self.lookup = {}
-		self.t = set()
-		self.nt = set()
-		self.p = {}
-
-	def symbol(self, sym):
-		if isinstance(sym, Terminal):
-			self.t |= set([sym.val])
-		elif isinstance(sym, NonTerminal):
-			self.nt |= set([sym.val])
-		else:
-			raise TypeError
-		self.sym[sym.name] = sym
-		self.lookup[sym.val] = sym
-
-	def production(self, p):
-		if not isinstance(p, Production):
-			raise TypeError
-		try:
-			p = self.p[p.nt.name] | p
-		except KeyError:
-			pass
-		self.p[p.nt.name] = p
-
-	def __getitem__(self, k):
-		if isinstance(k, str):
-			return self.sym[k]
-		elif isinstance(k, int):
-			return self.lookup[k]
-		else:
-			raise TypeError
-
-	def __iter__(self):
-		return iter(self.p.values())
-
-	def construct_markers(self):
-		print 'construct markers...'
-		for s in self.sym.values():
-			if isinstance(s, NonTerminal) and \
-					not self.p.has_key(s.name):
-				self.p[s.name] = Production(s, [SymEpsilon()])
-
-	def eliminate_immediate_left_recursion(self, p):
-		prime = NonTerminal(p.nt.name + "'")
-		new = []
-		np = Production(prime)
-		lr = None
-		#print 'direct left recution', p.nt
-		for r in p:
-			left = r[0]
-			if left is p.nt:
-				lr = r[1:]
-				lr.append(prime)
-				np.rules.append(lr)
-				continue
-			r.append(prime)
-			new.append(r)
-		#print p
-		p.rules = new
-		#print p
-		self.production(np)
-		np.rules.append([SymEpsilon()])
-		self.symbol(prime)
-		#print np 
-		#print
-
-	def eliminate_left_recursion(self):
-		print 'eliminate left recursion...'
-		lrp = []
-		for p in self:
-			for r in p:
-				left = r[0]
-				if left is p.nt:
-					lrp.append(p)
-					break
-
-		for p in lrp:
-			self.eliminate_immediate_left_recursion(p)
-
+from bootstrap import *
 
 class Parser(object):
 	def __init__(self, g, start):
@@ -369,23 +202,18 @@ def read_terminals(fn):
 			l = l.split(',', 1)
 			yield Terminal(l[0].strip())
 
-def read_nonterminals(fn):
-	for l in read_file(fn):
-		if not l or l[0] == '#':
-			continue
-		yield l
-
 def read_productions(g, fn):
 	for l in read_file(fn):
 		if not l or l[0] == '#':
 			continue
 		l = l.split()
 		assert(l[1] == '->')
+		pnt = g.get(l[0])
 		if not l[2:]:
 			r = [SymEpsilon()]
 		else:
-			r = map(lambda x:g[x], l[2:])
-		p = Production(g[l[0]], r)
+			r = map(g.get, l[2:])
+		p = Production(pnt, r)
 		yield p
 
 def main(argv):
@@ -393,16 +221,13 @@ def main(argv):
 	EXIT_FAILURE = 1
 
 	g = Grammar()
-	for t in read_terminals(argv[3]):
+	for t in read_terminals(argv[1]):
 		g.symbol(t)
 
 	start_sym = None
-	for nt in read_nonterminals(argv[1]):
-		if start_sym == None:
-			start_sym = nt
-		g.symbol(NonTerminal(nt))
-
 	for p in read_productions(g, argv[2]):
+		if start_sym is None:
+			start_sym = p.nt.name
 		g.production(p)
 
 	# Add start symbol as RealStart then EOF
@@ -412,6 +237,7 @@ def main(argv):
 
 	g.construct_markers()
 	g.eliminate_left_recursion()
+
 	p = Parser(g, 'S')
 
 	p.write_tables('grammar', path='./include')

@@ -75,7 +75,6 @@ if __name__ == '__main__':
 				default = 'lex',
 				type = str,
 				help = 'Set the output filename')
-	opts.add_argument
 
 	args = opts.parse_args()
 

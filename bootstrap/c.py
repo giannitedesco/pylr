@@ -176,7 +176,7 @@ class CFile(file):
 		self.write(\
 '''		if ( !nul_terminate(l) )
 			return 0;
-		t->t_u.tu_int = strtoull(l->l_buf, NULL, 0);
+		t->t_u.tu_uint = strtoull(l->l_buf, NULL, 0);
 		return 1;
 ''')
 
@@ -184,7 +184,7 @@ class CFile(file):
 		self.write(\
 '''		if ( !nul_terminate(l) )
 			return 0;
-		t->t_u.tu_uint = strtoll(l->l_buf, NULL, 0);
+		t->t_u.tu_int = strtoll(l->l_buf, NULL, 0);
 		return 1;
 ''')
 

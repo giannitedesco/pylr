@@ -28,6 +28,9 @@ class ParseTree(object):
 		self.action = action
 		super(ParseTree, self).__init__()
 
+	def symbol_name(self):
+		return self.name.upper().replace(' ', '_')
+
 	def make_final(self):
 		self.final = True
 		if isinstance(self.root, AstConcat) and \

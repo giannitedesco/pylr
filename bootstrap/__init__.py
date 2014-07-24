@@ -47,6 +47,17 @@ __all__ = [
 	# c.py
 	'CFile',
 	'HFile',
+
+	# symbol.py
+	'Sym',
+	'SymEpsilon',
+	'SymEof',
+	'Terminal',
+	'NonTerminal',
+
+	# grammar.py
+	'Production',
+	'Grammar',
 ]
 
 from tokens import *
@@ -56,3 +67,6 @@ from parser import ParseTree, parse
 from dfa import DFA
 from graph import Graph
 from c import CFile, HFile
+
+from symbol import *
+from grammar import Production, Grammar
