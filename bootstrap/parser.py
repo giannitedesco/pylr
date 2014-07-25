@@ -162,7 +162,7 @@ def get_parms(t):
 	#print '%s -> %s %s'%(t.name, name, kw)
 	return (name, kw)
 
-def parse(fn):
+def parse(fn, break_terminals=True):
 	p = None
 	for t in tokenize(fn):
 		if isinstance(t, TokHead):
@@ -171,7 +171,7 @@ def parse(fn):
 				yield p
 			(name, kwargs) = get_parms(t)
 			p = ParseTree(name, **kwargs)
-		elif isinstance(t, TokLiteral):
+		elif break_terminals and isinstance(t, TokLiteral):
 			map(lambda x:p.feed(TokLiteral(x, t.lineno)), t.name)
 		else:
 			p.feed(t)

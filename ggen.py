@@ -27,7 +27,7 @@ def read_terminals(fn):
 			yield Terminal(l[0].strip())
 
 def parse_bnf(fn, tbl = {}):
-	for p in parse(fn):
+	for p in parse(fn, break_terminals=False):
 		if tbl.has_key(p.name):
 			raise Exception('%s multiply defind'%p.name)
 		tbl[p.name] = p
@@ -38,49 +38,11 @@ def parse_terminals(fn, tbl = {}):
 		tbl[t.name] = t
 	return tbl
 
-def normalize(name, r, g, tbl):
-	if isinstance(r, AstLink):
-		if isinstance(tbl[r.p], ParseTree):
-			ret = normalize(tbl[r.p].symbol_name(),
-					tbl[r.p].root, g, tbl)
-			print ret
-			return [r.symbol_name()]
-		else:
-			return [r.p]
-	elif isinstance(r, AstLiteral):
-		print 'Error: %s has literals'%(r.name)
-		raise ValueError
-	elif isinstance(r, AstConcat):
-		a = normalize(name, r.a, g, tbl)
-		b = normalize(name, r.b, g, tbl)
-		return a + b
-	elif isinstance(r, AstChoice):
-		a = isinstance(r.a, AstLink) and \
-				tbl[r.a.p].symbol_name() or 'NOTHING'
-		b = isinstance(r.b, AstLink) and \
-				tbl[r.b.p].symbol_name() or 'NOTHING'
-		return ['%s_OR_%s'%(a, b)]
-	else:
-		#p = Production(g.get(name))
-		#g.production(p)
-		print name
-		r.pretty_print()
-		print
-		return []
-
 def make_grammar(r, tbl = {}):
-	for p in tbl.values():
-		if isinstance(p, ParseTree):
-			p.root = p.root.flatten()
-
-	g = Grammar()
-	print r.symbol_name()
-	r.root.pretty_print()
-	print
-	ret = normalize(r.symbol_name(), r.root, g, tbl)
-	print ret
-
-	return g
+	for r in tbl.values():
+		if isinstance(r, ParseTree):
+			r.root.pretty_print()
+			print
 
 def main(argv):
 	EXIT_SUCCESS = 0
@@ -116,9 +78,7 @@ def main(argv):
 	map(lambda x:parse_terminals(x, tbl), args.terminals)
 	map(lambda x:parse_bnf(x, tbl), args.files)
 
-	g = make_grammar(tbl[args.start], tbl)
-	for x in g:
-		print x
+	make_grammar(tbl[args.start], tbl)
 	return EXIT_SUCCESS
 
 if __name__ == '__main__':
