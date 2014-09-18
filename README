@@ -1,0 +1,5 @@
+pyll is a python LL(1) and DFA lexer generator
+
+Copyright (c) 2014 Gianni Tedesco
+
+Released under the terms of the GNU GPL v3 (see: COPYING)
