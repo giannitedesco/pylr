@@ -109,7 +109,7 @@ class AstLink(AstNode):
 		super(AstLink, self).__init__()
 	def pretty_print(self, depth = 0):
 		pfx = ' ' * depth * 2
-		print '%s-> %s'%(pfx, self.symbol_name())
+		print '%s-> %s'%(pfx, self.p)
 	def symbol_name(self):
 		return self.p.upper().replace(' ', '_')
 	def resolve_links(self, tbl = {}, v = set()):

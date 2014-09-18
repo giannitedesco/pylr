@@ -40,9 +40,8 @@ def parse_terminals(fn, tbl = {}):
 
 def make_grammar(r, tbl = {}):
 	for r in tbl.values():
-		if isinstance(r, ParseTree):
-			r.root.pretty_print()
-			print
+		r.root.pretty_print()
+		print
 
 def main(argv):
 	EXIT_SUCCESS = 0
@@ -74,11 +73,12 @@ def main(argv):
 
 	args = opts.parse_args()
 
-	tbl = {}
-	map(lambda x:parse_terminals(x, tbl), args.terminals)
-	map(lambda x:parse_bnf(x, tbl), args.files)
+	t = {}
+	nt = {}
+	map(lambda x:parse_terminals(x, t), args.terminals)
+	map(lambda x:parse_bnf(x, nt), args.files)
 
-	make_grammar(tbl[args.start], tbl)
+	make_grammar(nt[args.start], nt)
 	return EXIT_SUCCESS
 
 if __name__ == '__main__':
