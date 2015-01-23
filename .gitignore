@@ -3,4 +3,6 @@
 *.ps
 *.o
 .*.d
+lex.c
+lex.h
 test
