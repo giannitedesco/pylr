@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser
 from bootstrap import *
+from os.path import join
 
 def read_file(fn):
 	f = open(fn)
@@ -79,6 +80,9 @@ def main(argv):
 	map(lambda x:parse_bnf(x, nt), args.files)
 
 	make_grammar(nt[args.start], nt)
+
+	gfn = join(args.includedir, 'grammar.h')
+	open(gfn, 'w')
 	return EXIT_SUCCESS
 
 if __name__ == '__main__':
