@@ -1,4 +1,4 @@
-pyll is a python LL(1) and DFA lexer generator
+pyll is a python LR(1) and DFA lexer generator
 
 Copyright (c) 2014 Gianni Tedesco
 

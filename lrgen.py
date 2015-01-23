@@ -47,7 +47,7 @@ def main(argv):
 	EXIT_SUCCESS = 0
 	EXIT_FAILURE = 1
 
-	opts = ArgumentParser(description='Generate an LL parser table')
+	opts = ArgumentParser(description='Generate an LR parser table')
 	opts.add_argument('start',
 				metavar='production', type=str,
 				help = 'Name of the start nonterminal')
