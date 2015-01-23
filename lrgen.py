@@ -39,9 +39,10 @@ def parse_terminals(fn, tbl = {}):
 		tbl[t.name] = t
 	return tbl
 
-def make_grammar(r, tbl = {}):
-	for r in tbl.values():
-		r.root.pretty_print()
+def make_grammar(r, p = {}, s = {}):
+	for k,v in p.items():
+		print '--', k
+		v.root.pretty_print()
 		print
 
 def main(argv):
@@ -74,12 +75,12 @@ def main(argv):
 
 	args = opts.parse_args()
 
-	t = {}
+	s = {}
 	nt = {}
-	map(lambda x:parse_terminals(x, t), args.terminals)
+	map(lambda x:parse_terminals(x, s), args.terminals)
 	map(lambda x:parse_bnf(x, nt), args.files)
 
-	make_grammar(nt[args.start], nt)
+	make_grammar(nt[args.start], nt, s)
 
 	gfn = join(args.includedir, 'grammar.h')
 	open(gfn, 'w')

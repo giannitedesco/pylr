@@ -37,6 +37,9 @@ class AstNode(object):
 		assert(self.followpos is None)
 		self.followpos = set()
 
+	def __iter__(self):
+		return iter([self])
+
 class AstEpsilon(AstNode):
 	def __init__(self):
 		super(AstEpsilon, self).__init__()
@@ -158,6 +161,11 @@ class AstUnary(AstNode):
 		return self.__class__(self.op.copy())
 	def finals(self, out = []):
 		self.op.finals(out)
+	def __iter__(self):
+		yield self
+		for x in self.op:
+			yield x
+		return
 
 class AstBinary(AstNode):
 	def __init__(self, a, b):
@@ -196,6 +204,13 @@ class AstBinary(AstNode):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
 	def __repr__(self):
 		return '%s(%s, %s)'%(self.__class__.__name__, self.a, self.b)
+	def __iter__(self):
+		yield self
+		for x in self.a:
+			yield x
+		for x in self.b:
+			yield x
+		return
 
 class AstEllipsis(AstUnary):
 	def __init__(self, op):
@@ -266,4 +281,3 @@ class AstChoice(AstBinary):
 		return self.a.firstpos().union(self.b.firstpos())
 	def _calc_lastpos(self):
 		return self.a.lastpos().union(self.b.lastpos())
-

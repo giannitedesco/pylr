@@ -58,7 +58,7 @@ lex.c: bnf.bnf
 lex.h: lex.c
 
 clean:
-	rm -f $(ALL_TARGETS) $(GRAMMAR) $(ALL_OBJ) $(ALL_DEP) tagops.c lex.h
+	rm -f $(ALL_TARGETS) $(GRAMMAR) $(ALL_OBJ) $(ALL_DEP) lex.h
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(ALL_DEP)
