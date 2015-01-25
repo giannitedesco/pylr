@@ -119,7 +119,7 @@ def main(argv):
 	EXIT_SUCCESS = 0
 	EXIT_FAILURE = 1
 
-	opts = ArgumentParser(description='Generate an LR parser table')
+	opts = ArgumentParser(description='Generate an LL parser table')
 	opts.add_argument('start',
 				metavar='production', type=str,
 				help = 'Name of the start nonterminal')
@@ -163,8 +163,9 @@ def main(argv):
 	g.construct_markers()
 	g.eliminate_left_recursion()
 
-	#p = LRGen(g, 'S')
-	#p.write_tables(args.base_name, path=args.includedir)
+	p = LLGen(g, 'S')
+
+	p.write_tables(args.base_name, path=args.includedir)
 
 	return EXIT_SUCCESS
 

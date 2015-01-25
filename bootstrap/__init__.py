@@ -58,6 +58,9 @@ __all__ = [
 	# grammar.py
 	'Production',
 	'Grammar',
+
+	# llgen.py
+	'LLGen',
 ]
 
 from tokens import *
@@ -70,3 +73,5 @@ from c import CFile, HFile
 
 from symbol import *
 from grammar import Production, Grammar
+
+from llgen import LLGen
