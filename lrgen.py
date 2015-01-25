@@ -39,11 +39,71 @@ def parse_terminals(fn, tbl = {}):
 		tbl[t.name] = t
 	return tbl
 
+class gState(object):
+	def __init__(self, name = '', num_primes = 0):
+		self.name = name.upper().replace(' ', '_')
+		self.num_primes = num_primes
+	def new_prime(self):
+		self.num_primes += 1
+		return self.name + '_PRIME%d'%self.num_primes
+
+def recurse(node, s):
+	if isinstance(node, AstUnary):
+		op = recurse(node.op, s)
+	elif isinstance(node, AstBinary):
+		a = recurse(node.a, s)
+		b = recurse(node.b, s)
+
+	if isinstance(node, AstSquares):
+		# [A] -> A | epsilon
+		np = s.new_prime()
+		print '%s -> %s'%(np, op)
+		print '%s ->'%(np)
+		return [np]
+	elif isinstance(node, AstClosure):
+		# A* -> A | AA
+		np = s.new_prime()
+		print '%s -> %s'%(np, op)
+		print '%s -> %s %s'%(np, op, op)
+		return
+	elif isinstance(node, AstChoice):
+		# two new prime productions
+		np = s.new_prime()
+		print '%s -> %s'%(np, a)
+		print '%s -> %s'%(np, b)
+		return [np]
+	elif isinstance(node, AstLink):
+		return [node.p.upper().replace(' ', '_')]
+	elif isinstance(node, AstConcat):
+		return a + b
+	else:
+		print node
+		assert(False)
+
+def bnf_to_production(name, bnf):
+	print '--', name
+	bnf.pretty_print()
+	print
+
+	# First check the tree
+	for node in bnf:
+		if isinstance(node, AstLiteral):
+			print 'rule "%s", literal "%s" not allowed'%(\
+					name, node.literal)
+			return
+
+	s = gState(name = name, num_primes = 0)
+	r = recurse(bnf, s)
+	print '%s -> %s'%(s.name, r)
+
+	return True
+
 def make_grammar(r, p = {}, s = {}):
 	for k,v in p.items():
-		print '--', k
-		v.root.pretty_print()
+		if bnf_to_production(k, v.root) is None:
+			return False
 		print
+	return True
 
 def main(argv):
 	EXIT_SUCCESS = 0
@@ -80,7 +140,8 @@ def main(argv):
 	map(lambda x:parse_terminals(x, s), args.terminals)
 	map(lambda x:parse_bnf(x, nt), args.files)
 
-	make_grammar(nt[args.start], nt, s)
+	if not make_grammar(nt[args.start], nt, s):
+		return EXIT_FAILURE
 
 	gfn = join(args.includedir, 'grammar.h')
 	open(gfn, 'w')

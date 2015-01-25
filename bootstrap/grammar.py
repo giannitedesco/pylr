@@ -9,20 +9,24 @@ class Production(object):
 		self.rules = []
 		if r is not None:
 			self.rule(r)
+
 	def rule(self, r):
 		for x in r:
 			if not isinstance(x, Sym):
 				raise TypeError
 		self.rules.append(r)
+
 	def __or__(a, b):
 		if a.nt is not b.nt:
 			raise ValueError
 		p = Production(a.nt)
 		p.rules = a.rules | b.rules
 		return p
+
 	def __str__(self):
 		return '%s(%s -> %s)'%(self.__class__.__name__,
 						self.nt, self.rules)
+
 	def __repr__(self):
 		return '%s(%s -> %s)'%(self.__class__.__name__,
 						self.nt, self.rules)
