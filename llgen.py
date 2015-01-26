@@ -160,6 +160,7 @@ def main(argv):
 	g.symbol(NonTerminal('S'))
 	g.production(Production(g['S'], [g[start_sym], SymEof()]))
 
+	g.eliminate_unit_rules()
 	g.construct_markers()
 	g.eliminate_left_recursion()
 

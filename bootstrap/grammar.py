@@ -83,6 +83,9 @@ class Grammar(object):
 					not self.p.has_key(s.name):
 				self.p[s.name] = Production(s, [SymEpsilon()])
 
+	def elimnate_unit_rules(self):
+		return
+
 	def eliminate_immediate_left_recursion(self, p):
 		prime = NonTerminal(p.nt.name + "'")
 		new = []
