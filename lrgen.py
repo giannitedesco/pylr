@@ -157,12 +157,13 @@ def main(argv):
 	start_sym = args.start.upper().replace(' ', '_')
 	print 'Taking %s as start symbol'%start_sym
 
-	g.symbol(NonTerminal('S'))
-	g.production(Production(g['S'], [g[start_sym], SymEof()]))
+	g.augment(start_sym)
 
 	g.eliminate_unit_rules()
 	g.construct_markers()
-	g.eliminate_left_recursion()
+	#g.eliminate_left_recursion()
+
+	g.construct_FOLLOW()
 
 	#p = LRGen(g, 'S')
 	#p.write_tables(args.base_name, path=args.includedir)

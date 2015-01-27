@@ -52,6 +52,7 @@ __all__ = [
 	'Sym',
 	'SymEpsilon',
 	'SymEof',
+	'SymStart',
 	'Terminal',
 	'NonTerminal',
 

@@ -41,6 +41,13 @@ class Grammar(object):
 		self.t = set()
 		self.nt = set()
 		self.p = {}
+		self.FIRST = None
+		self.FOLLOW = None
+
+	def augment(self, start_sym):
+		self.symbol(SymStart())
+		self.production(Production(SymStart(),
+				[self[start_sym], SymEof()]))
 
 	def symbol(self, sym):
 		if isinstance(sym, Terminal):
@@ -83,7 +90,7 @@ class Grammar(object):
 					not self.p.has_key(s.name):
 				self.p[s.name] = Production(s, [SymEpsilon()])
 
-	def elimnate_unit_rules(self):
+	def eliminate_unit_rules(self):
 		return
 
 	def eliminate_immediate_left_recursion(self, p):
@@ -109,6 +116,7 @@ class Grammar(object):
 
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
+		# FIXME: do this properly for all left-recursion
 		lrp = []
 		for p in self:
 			for r in p:
@@ -119,3 +127,87 @@ class Grammar(object):
 
 		for p in lrp:
 			self.eliminate_immediate_left_recursion(p)
+
+	def construct_FIRST(self):
+		print 'Construct FIRST function..'
+		if self.FIRST is not None:
+			return self.FIRST
+		def do_FIRST(nt, f):
+			if f.has_key(nt.name):
+				return f[nt.name]
+			p = self.p[nt.name]
+			s = set()
+			for r in p:
+				start = r[0]
+				if isinstance(start, NonTerminal):
+					tmp = do_FIRST(start, f)
+				else:
+					tmp = set([start])
+				if s & tmp:
+					print ' FIRST/FIRST conflict ->', \
+						nt.name, s & tmp
+				s |= tmp
+			f[nt.name] = s
+			return s
+
+		f = {}
+		for nt in self.sym.values():
+			if not isinstance(nt, NonTerminal):
+				continue
+			do_FIRST(nt, f)
+
+		#for k, v in sorted(f.items()):
+		#	print ' ->', k, v
+
+		self.FIRST = f
+		return f
+
+	def construct_FOLLOW(self):
+		if self.FOLLOW is not None:
+			return self.FOLLOW
+		self.construct_FIRST()
+		print 'Construct FOLLOW function..'
+		def do_FOLLOW(nt, f):
+			if f.has_key(nt.name):
+				return f[nt.name]
+			s = set()
+			rec = []
+			for p in self:
+				for r in p:
+					if r[-1] is nt:
+						rec.append(p.nt)
+					try:
+						i = r.index(nt)
+					except ValueError:
+						continue
+					if i + 1 >= len(r):
+						continue
+					n = r[i + 1]
+					if isinstance(n, NonTerminal):
+						tmp = self.FIRST[n.name]
+						if SymEpsilon() in tmp:
+							rec.append(n)
+						s |= tmp - set([SymEpsilon()])
+					else:
+						s |= set([n])
+			f[nt.name] = s
+			for n in sorted(set(rec)):
+				s |= do_FOLLOW(n, f)
+				f[nt.name] = s
+			return s
+
+		f = {}
+		for nt in self.sym.values():
+			if not isinstance(nt, NonTerminal):
+				continue
+			do_FOLLOW(nt, f)
+		f['S'] = set([SymEof()])
+
+		for k, v in sorted(f.items()):
+			if v & self.FIRST[k]:
+				print ' FIRST/FOLLOW conflict ->', k,\
+						v & self.FIRST[k]
+			#print ' ->', k, v
+
+		self.FOLLOW = f
+		return f

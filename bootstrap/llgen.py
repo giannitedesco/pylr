@@ -10,102 +10,24 @@ class LLGen(object):
 			raise TypeError
 		if not isinstance(self.start, NonTerminal):
 			raise TypeError
-		self.FIRST = self.construct_FIRST()
-		self.FOLLOW = self.construct_FOLLOW()
+		self.g.construct_FIRST()
+		self.g.construct_FOLLOW()
 		self.parse = self.construct_parse_table()
-
-	def construct_FIRST(self):
-		print 'Construct FIRST function..'
-		# FIXME: Detect left recursion and abort
-		def do_FIRST(nt, f):
-			if f.has_key(nt.name):
-				return f[nt.name]
-			p = self.g.p[nt.name]
-			s = set()
-			for r in p:
-				start = r[0]
-				if isinstance(start, NonTerminal):
-					tmp = do_FIRST(start, f)
-				else:
-					tmp = set([start])
-				if s & tmp:
-					print ' FIRST/FIRST conflict ->', \
-						nt.name, s & tmp
-				s |= tmp
-			f[nt.name] = s
-			return s
-
-		f = {}
-		for nt in self.g.sym.values():
-			if not isinstance(nt, NonTerminal):
-				continue
-			do_FIRST(nt, f)
-
-		#for k, v in sorted(f.items()):
-		#	print ' ->', k, v
-
-		return f
-
-	def construct_FOLLOW(self):
-		print 'Construct FOLLOW function..'
-		def do_FOLLOW(nt, f):
-			if f.has_key(nt.name):
-				return f[nt.name]
-			s = set()
-			rec = []
-			for p in self.g:
-				for r in p:
-					if r[-1] is nt:
-						rec.append(p.nt)
-					try:
-						i = r.index(nt)
-					except ValueError:
-						continue
-					if i + 1 >= len(r):
-						continue
-					n = r[i + 1]
-					if isinstance(n, NonTerminal):
-						tmp = self.FIRST[n.name]
-						if SymEpsilon() in tmp:
-							rec.append(n)
-						s |= tmp - set([SymEpsilon()])
-					else:
-						s |= set([n])
-			f[nt.name] = s
-			for n in sorted(set(rec)):
-				s |= do_FOLLOW(n, f)
-				f[nt.name] = s
-			return s
-
-		f = {}
-		for nt in self.g.sym.values():
-			if not isinstance(nt, NonTerminal):
-				continue
-			do_FOLLOW(nt, f)
-		f['S'] = set([SymEof()])
-
-		for k, v in sorted(f.items()):
-			if v & self.FIRST[k]:
-				print ' FIRST/FOLLOW conflict ->', k,\
-						v & self.FIRST[k]
-			#print ' ->', k, v
-
-		return f
 
 	def construct_parse_table(self):
 		print 'Construct parse table...'
 		t = {}
-		for p in self.g:
+		for p in self:
 			for r in p:
 				A = p.nt
 				first = r[0]
 				if isinstance(first, NonTerminal):
-					s = self.FIRST[first.name]
+					s = self.g.FIRST[first.name]
 				else:
 					s = set([first])
 				if SymEpsilon() in s:
 					s -= set([SymEpsilon()])
-					s |= self.FOLLOW[A.name]
+					s |= self.g.FOLLOW[A.name]
 				for a in s:
 					if t.has_key((A,a)):
 						print 'AMBIGUOUS', A, a
