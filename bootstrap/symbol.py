@@ -59,6 +59,7 @@ class NonTerminal(Sym):
 				isinstance(self.prime_for, NonTerminal):
 			raise TypeError
 		self.num_primes = 0
+		self.terminal_marker = False
 	def is_prime(self):
 		return self.prime_for is not None
 	def new_prime(self):

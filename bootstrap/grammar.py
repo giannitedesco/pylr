@@ -32,6 +32,10 @@ class Production(object):
 						self.nt, self.rules)
 	def __iter__(self):
 		return iter(self.rules)
+	def __getitem__(self, k):
+		return self.rules[k]
+	def __delitem__(self, k):
+		del self.rules[k]
 
 class Grammar(object):
 	def __init__(self):
@@ -90,7 +94,72 @@ class Grammar(object):
 					not self.p.has_key(s.name):
 				self.p[s.name] = Production(s, [SymEpsilon()])
 
+	def wrap_terminals(self):
+		print 'wrap terminals...'
+		for t in map(self.__getitem__, self.t):
+			s = NonTerminal('TERMINAL_%s'%t.name)
+			s.terminal_marker = True
+			self.symbol(s)
+			p = Production(s)
+			p.rule([t])
+			self.production(p)
+
+		def do_wrap(sym):
+			if isinstance(sym, Terminal):
+				n = 'TERMINAL_%s'%sym.name
+				return self[n]
+			return sym
+
+		def wrap(rule):
+			return map(do_wrap, rule)
+
+		for nt, p in self.p.items():
+			if self[nt].terminal_marker:
+				continue
+			p.rules = map(wrap, p.rules)
+
+	def normalize(self):
+		print 'normalize...'
+		def long_rules():
+			for nt, p in self.p.items():
+				for r in p:
+					if len(r) <= 2:
+						continue
+					yield p, r
+
+		for p, r in long_rules():
+
+			# create new chain of rules
+			#print p.nt
+			#print r
+
+			n = [p.nt.new_prime() for x in r[1:-1]]
+			map(self.symbol, n)
+
+			for j, w in enumerate(r[:-1]):
+				if not j:
+					np = p
+				else:
+					np = Production(n[j - 1])
+
+				try:
+					np.rule([w, n[j]])
+				except IndexError:
+					np.rule([w, r[j + 1]])
+
+				if j:
+					#print '+', np
+					self.production(np)
+			#print
+
+		# remove all the old, long rules
+		for nt, p in self.p.items():
+			for r in p:
+				p.rules = filter(lambda x:len(x) <= 2,
+							p.rules)
+
 	def eliminate_epsilons(self):
+		print 'eliminate epsilon productions...'
 		rcopy = []
 		for nt, rules in self.p.items():
 			for r in rules:
@@ -102,17 +171,47 @@ class Grammar(object):
 					yield l
 		e = frozenset(erules(rcopy))
 
-		print e
-		print
+		#print 'nullables:', e
+		#print
 		for (l,r) in rcopy:
-			if frozenset(r) & e:
-				print r
+			if len(r) == 1:
+				if r[0] in e:
+					print 'delete rule', l, r
+				continue
+			assert(len(r) == 2)
+			#if frozenset(r) & e:
+			#	print l.name, '->', \
+			#		' '.join(map(lambda x:x.name, r))
+			if r[0] in e:
+				#print l.name, '->', r[1].name
+				self.p[l.name].rules.append([r[1]])
+				#print
+			elif r[1] in e:
+				#print l.name, '->', r[0].name
+				self.p[l.name].rules.append([r[0]])
+				#print
 
-		raise SystemExit
-		return
+		# FIXME: if StartSym -> epsilon, then keep it
+		def f(r):
+			if frozenset(r) & e:
+				return False
+			return r[0] is not SymEpsilon()
+
+		for nt, p in self.p.items():
+			p.rules = filter(f, p.rules)
 
 	def eliminate_unit_rules(self):
-		return
+		print 'eliminate unit rules...'
+		for l, p in self.p.items():
+			if self[l].terminal_marker:
+				continue
+			for r in p:
+				if len(r) == 2:
+					continue
+				assert(len(r) == 1)
+				print l, '->', \
+					' '.join(map(lambda x:x.name, r))
+		raise SystemExit
 
 	def eliminate_immediate_left_recursion(self, p):
 		prime = NonTerminal(p.nt.name + "'")
