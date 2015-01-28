@@ -1,4 +1,5 @@
 from symbol import *
+from graph import Graph
 
 class Production(object):
 	def __init__(self, nt, r = None):
@@ -14,6 +15,9 @@ class Production(object):
 		for x in r:
 			if not isinstance(x, Sym):
 				raise TypeError
+		for o in self.rules:
+			if o == r:
+				return
 		self.rules.append(r)
 
 	def __or__(a, b):
@@ -202,51 +206,85 @@ class Grammar(object):
 
 	def eliminate_unit_rules(self):
 		print 'eliminate unit rules...'
-		for l, p in self.p.items():
-			if self[l].terminal_marker:
-				continue
-			for r in p:
-				if len(r) == 2:
+		def unit_rules():
+			for l, p in self.p.items():
+				if self[l].terminal_marker:
 					continue
-				assert(len(r) == 1)
+				for r in p:
+					if len(r) == 2:
+						continue
+					assert(len(r) == 1)
+					yield self[l], r[0]
+
+		def make_dot_file(gen):
+			g = Graph('Unit Rules', 'unit.dot')
+			s = set()
+			for l, r in gen:
+				if l.name not in s:
+					g.add_node(l.name, shape='rectangle')
+				if r.name not in s:
+					g.add_node(r.name, shape='rectangle')
+				s.add(l.name)
+				s.add(r.name)
+				g.add_edge(l.name, r.name, '')
+
+		make_dot_file(unit_rules())
+
+		fwd = dict()
+		rev = dict()
+		s = set()
+		for l, r in unit_rules():
+			fwd.setdefault(l.name, list()).append(r.name)
+			rev.setdefault(r.name, list()).append(l.name)
+			s.add(l.name)
+			s.add(r.name)
+
+		start = s - set(fwd.keys())
+
+		def replace(e, f):
+			# for each edge E -> F
+			#print 'traversed edge: %s -> %s'%(e, f)
+
+			e = self.p[e]
+			f = self.p[f]
+
+			# for each rule F -> CD
+			for r in f:
+				#  `- replace with E -> CD
+				if len(r) == 2:
+					e.rule(r)
+					continue
+			def nonunit(r):
+				return len(r) == 2
+			f.rules = filter(nonunit, e.rules)
+
+			# remove rule E -> F
+			def kill(rule):
+				return rule != [f.nt]
+			e.rules = filter(kill, e.rules)
+
+		def traverse(x):
+			try:
+				l = rev[x]
+			except KeyError:
+				return
+			for n in l:
+				replace(n, x)
+				traverse(n)
+
+		for x in start:
+			traverse(x)
+			#print
+
+	def dump(self):
+		for l, p in self.p.items():
+			for r in p:
 				print l, '->', \
 					' '.join(map(lambda x:x.name, r))
-		raise SystemExit
-
-	def eliminate_immediate_left_recursion(self, p):
-		prime = NonTerminal(p.nt.name + "'")
-		new = []
-		np = Production(prime)
-		lr = None
-		#print 'direct left recution', p.nt
-		for r in p:
-			left = r[0]
-			if left is p.nt:
-				lr = r[1:]
-				lr.append(prime)
-				np.rules.append(lr)
-				continue
-			r.append(prime)
-			new.append(r)
-		p.rules = new
-		np.rules.append([SymEpsilon()])
-		self.production(np)
-		self.symbol(prime)
-		#print
 
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
-		# FIXME: do this properly for all left-recursion
-		lrp = []
-		for p in self:
-			for r in p:
-				left = r[0]
-				if left is p.nt:
-					lrp.append(p)
-					break
-
-		for p in lrp:
-			self.eliminate_immediate_left_recursion(p)
+		raise SystemExit
 
 	def construct_FIRST(self):
 		print 'Construct FIRST function..'

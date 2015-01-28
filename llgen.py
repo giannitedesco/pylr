@@ -171,7 +171,7 @@ def main(argv):
 	g.eliminate_unit_rules()
 
 	# now we are ready to eliminate left recursion
-	#g.eliminate_left_recursion()
+	g.eliminate_left_recursion()
 
 	p = LLGen(g, 'S')
 
