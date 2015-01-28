@@ -1,4 +1,6 @@
-pyll is a python LR(1) and DFA lexer generator
+pyll is a python LALR(1), LL(1) and DFA lexer generator
+
+It's a compiler-compiler hosted in python and targetting C.
 
 Copyright (c) 2014 Gianni Tedesco
 
