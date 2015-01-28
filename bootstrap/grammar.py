@@ -90,6 +90,27 @@ class Grammar(object):
 					not self.p.has_key(s.name):
 				self.p[s.name] = Production(s, [SymEpsilon()])
 
+	def eliminate_epsilons(self):
+		rcopy = []
+		for nt, rules in self.p.items():
+			for r in rules:
+				rcopy.append((self[nt], r))
+
+		def erules(rcopy):
+			for (l,r) in rcopy:
+				if r[0] is SymEpsilon():
+					yield l
+		e = frozenset(erules(rcopy))
+
+		print e
+		print
+		for (l,r) in rcopy:
+			if frozenset(r) & e:
+				print r
+
+		raise SystemExit
+		return
+
 	def eliminate_unit_rules(self):
 		return
 

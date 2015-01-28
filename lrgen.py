@@ -159,8 +159,9 @@ def main(argv):
 
 	g.augment(start_sym)
 
-	g.eliminate_unit_rules()
 	g.construct_markers()
+	g.eliminate_epsilons()
+	g.eliminate_unit_rules()
 	#g.eliminate_left_recursion()
 
 	g.construct_FOLLOW()

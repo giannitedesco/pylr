@@ -43,7 +43,9 @@ class gState(object):
 		self.num_primes += 1
 		name = self.name + '_PRIME%d'%self.num_primes
 		assert(not self.g.sym.has_key(name))
-		p = Production(NonTerminal(name))
+		s = NonTerminal(name)
+		self.g.symbol(s)
+		p = Production(s)
 		return p
 
 def recurse(node, s):
@@ -159,9 +161,10 @@ def main(argv):
 
 	g.augment(start_sym)
 
-	g.eliminate_unit_rules()
 	g.construct_markers()
-	g.eliminate_left_recursion()
+	g.eliminate_epsilons()
+	g.eliminate_unit_rules()
+	#g.eliminate_left_recursion()
 
 	p = LLGen(g, 'S')
 
