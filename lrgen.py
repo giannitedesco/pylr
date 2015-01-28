@@ -34,48 +34,43 @@ def parse_terminals(fn, tbl = {}):
 		tbl[t.name] = t
 	return tbl
 
-class gState(object):
-	def __init__(self, g, name = '', num_primes = 0):
-		self.g = g
-		self.name = name.upper().replace(' ', '_')
-		self.num_primes = num_primes
-	def new_prime(self):
-		self.num_primes += 1
-		name = self.name + '_PRIME%d'%self.num_primes
-		assert(not self.g.sym.has_key(name))
-		p = Production(NonTerminal(name))
-		return p
+def recurse(nt, node, g):
 
-def recurse(node, s):
 	if isinstance(node, AstUnary):
-		op = recurse(node.op, s)
+		op = recurse(nt, node.op, g)
 	elif isinstance(node, AstBinary):
-		a = recurse(node.a, s)
-		b = recurse(node.b, s)
+		a = recurse(nt, node.a, g)
+		b = recurse(nt, node.b, g)
 
 	if isinstance(node, AstSquares):
 		# [A] -> A | epsilon
-		p = s.new_prime()
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
 		p.rule(op)
 		p.rule([SymEpsilon()])
-		s.g.production(p)
+		g.production(p)
 		return [p.nt]
 	elif isinstance(node, AstClosure):
 		# A* -> A | AA
-		p = s.new_prime()
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
 		p.rule(op)
 		p.rule(op + op)
-		s.g.production(p)
+		g.production(p)
 		return [p.nt]
 	elif isinstance(node, AstChoice):
 		# two new prime productions
-		p = s.new_prime()
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
 		p.rule(a)
 		p.rule(b)
-		s.g.production(p)
+		g.production(p)
 		return [p.nt]
 	elif isinstance(node, AstLink):
-		return [s.g[node.p.upper().replace(' ', '_')]]
+		return [g[node.p.upper().replace(' ', '_')]]
 	elif isinstance(node, AstConcat):
 		return a + b
 	else:
@@ -83,6 +78,9 @@ def recurse(node, s):
 		assert(False)
 
 def bnf_to_production(g, name, bnf):
+	sym_name = name.upper().replace(' ', '_')
+	sym = g[sym_name]
+
 	#print '--', name
 	#bnf.pretty_print()
 	#print
@@ -94,10 +92,9 @@ def bnf_to_production(g, name, bnf):
 					name, node.literal)
 			return
 
-	s = gState(g, name = name, num_primes = 0)
-	r = recurse(bnf, s)
+	r = recurse(sym, bnf, g)
 
-	p = Production(g[name.upper().replace(' ', '_')])
+	p = Production(sym)
 	p.rule(r)
 	g.production(p)
 

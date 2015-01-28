@@ -52,8 +52,21 @@ class Terminal(Sym):
 		super(Terminal, self).__init__(name)
 
 class NonTerminal(Sym):
-	def __init__(self, name):
+	def __init__(self, name, prime_for = None):
 		super(NonTerminal, self).__init__(name)
+		self.prime_for = prime_for
+		if self.is_prime() and not \
+				isinstance(self.prime_for, NonTerminal):
+			raise TypeError
+		self.num_primes = 0
+	def is_prime(self):
+		return self.prime_for is not None
+	def new_prime(self):
+		p = self if self.prime_for is None else self.prime_for
+		p.num_primes += 1
+		name = '%s_PRIME%d'%(p.name, p.num_primes)
+		return NonTerminal(name, self)
+
 
 class SymStart(NonTerminal):
 	__instance = None
