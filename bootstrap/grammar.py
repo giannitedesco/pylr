@@ -282,9 +282,58 @@ class Grammar(object):
 				print l, '->', \
 					' '.join(map(lambda x:x.name, r))
 
+	def eliminate_immediate_left_recursion(self, p):
+		def f(r):
+			return r[0] == p.nt
+		lr = filter(f, p.rules)
+		nlr = filter(lambda x: not f(x), p.rules)
+
+		if not lr:
+			return
+
+		print p.nt.name, 'is left recursive'
+
+		prime = p.nt.new_prime()
+		self.symbol(prime)
+		np = Production(prime)
+
+		p.rules = []
+		for beta in nlr:
+			p.rule(beta + [prime])
+
+		for alpha in lr:
+			np.rule(alpha[1:] + [prime])
+
+		self.production(np)
+
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
-		raise SystemExit
+
+		def pairs():
+			for i, a in enumerate(self.p.values()):
+				for j, b in enumerate(self.p.values()):
+					if j >= i:
+						break
+					yield a, b
+
+		def f(r, b, new):
+			# no possibility of left recursion, keep it
+			if r[0] != b.nt:
+				return True
+
+			for x in b.rules:
+				nr = x + r[1:]
+				new.append(nr)
+
+			# remove old rule
+			return False
+
+		for a, b in list(pairs()):
+			new = []
+			a.rules = filter(lambda x:f(x, b, new), a.rules)
+			a.rules.extend(new)
+
+			self.eliminate_immediate_left_recursion(a)
 
 	def construct_FIRST(self):
 		print 'Construct FIRST function..'
