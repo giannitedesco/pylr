@@ -17,7 +17,7 @@ class LLGen(object):
 	def construct_parse_table(self):
 		print 'Construct parse table...'
 		t = {}
-		for p in self:
+		for p in self.g:
 			for r in p:
 				A = p.nt
 				first = r[0]
