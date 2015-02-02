@@ -309,11 +309,16 @@ class Grammar(object):
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
 
+		def num(p):
+			return p.nt.val
+
 		def pairs():
-			for i, a in enumerate(self.p.values()):
-				for j, b in enumerate(self.p.values()):
+			for i in sorted(map(num, self.p.values())):
+				for j in sorted(map(num, self.p.values())):
 					if j >= i:
 						break
+					a = self.p[self.lookup[i].name]
+					b = self.p[self.lookup[j].name]
 					yield a, b
 
 		def f(r, b, new):
@@ -400,7 +405,7 @@ class Grammar(object):
 				np = Production(ns)
 
 				replace(p, c, np)
-				# TODO delta = True
+				delta = True
 
 				self.production(np)
 
