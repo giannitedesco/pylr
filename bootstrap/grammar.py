@@ -287,11 +287,11 @@ class Grammar(object):
 		def f(r):
 			return r[0] == p.nt
 		lr = filter(f, p.rules)
-		nlr = filter(lambda x: not f(x), p.rules)
 
 		if not lr:
 			return
 
+		nlr = filter(lambda x: not f(x), p.rules)
 		print p.nt.name, 'is left recursive'
 
 		prime = p.nt.new_prime()
