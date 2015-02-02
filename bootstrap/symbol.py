@@ -67,6 +67,10 @@ class NonTerminal(Sym):
 		p.num_primes += 1
 		name = '%s_PRIME%d'%(p.name, p.num_primes)
 		return NonTerminal(name, self)
+	def __cmp__(a, b):
+		if not isinstance(b, Sym):
+			raise TypeError
+		return a.val.__cmp__(b.val)
 
 
 class SymStart(NonTerminal):

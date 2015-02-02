@@ -310,15 +310,15 @@ class Grammar(object):
 		print 'eliminate left recursion...'
 
 		def num(p):
-			return p.nt.val
+			return p.nt
 
 		def pairs():
 			for i in sorted(map(num, self.p.values())):
 				for j in sorted(map(num, self.p.values())):
 					if j >= i:
 						break
-					a = self.p[self.lookup[i].name]
-					b = self.p[self.lookup[j].name]
+					a = self.p[i.name]
+					b = self.p[j.name]
 					yield a, b
 
 		def f(r, b, new):
