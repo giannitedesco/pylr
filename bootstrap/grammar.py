@@ -71,6 +71,8 @@ class Grammar(object):
 	def production(self, p):
 		if not isinstance(p, Production):
 			raise TypeError
+		assert(p.nt.val in self.nt)
+		assert(p.nt.name in self.sym)
 		map(self.p.setdefault(p.nt.name, Production(p.nt)).rule,
 			p.rules)
 
@@ -277,10 +279,12 @@ class Grammar(object):
 			#print
 
 	def dump(self):
+		print '--'
 		for l, p in sorted(self.p.items()):
 			for r in p:
 				print l, '->', \
 					' '.join(map(lambda x:x.name, r))
+		print '--'
 
 	def eliminate_immediate_left_recursion(self, p):
 		def f(r):
