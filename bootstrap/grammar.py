@@ -301,6 +301,8 @@ class Grammar(object):
 		p.rules = []
 		for beta in nlr:
 			p.rule(beta + [prime])
+		if not p.rules:
+			p.rule([prime])
 
 		for alpha in lr:
 			np.rule(alpha[1:] + [prime])
