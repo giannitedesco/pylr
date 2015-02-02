@@ -173,7 +173,7 @@ class Grammar(object):
 
 		def erules(rcopy):
 			for (l,r) in rcopy:
-				if r[0] is SymEpsilon():
+				if len(r) == 1 and r[0] is SymEpsilon():
 					yield l
 		e = frozenset(erules(rcopy))
 
@@ -181,8 +181,6 @@ class Grammar(object):
 		#print
 		for (l,r) in rcopy:
 			if len(r) == 1:
-				if r[0] in e:
-					print 'delete rule', l, r
 				continue
 			assert(len(r) == 2)
 			#if frozenset(r) & e:
@@ -199,9 +197,8 @@ class Grammar(object):
 
 		# FIXME: if StartSym -> epsilon, then keep it
 		def f(r):
-			if frozenset(r) & e:
-				return False
-			return r[0] is not SymEpsilon()
+			nr = len(r) == 1 and r[0] is SymEpsilon()
+			return not nr
 
 		for nt, p in self.p.items():
 			p.rules = filter(f, p.rules)
