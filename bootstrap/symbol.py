@@ -66,7 +66,7 @@ class NonTerminal(Sym):
 		p = self if self.prime_for is None else self.prime_for
 		p.num_primes += 1
 		name = '%s_PRIME%d'%(p.name, p.num_primes)
-		return NonTerminal(name, self)
+		return NonTerminal(name, prime_for = p)
 	def __cmp__(a, b):
 		if not isinstance(b, Sym):
 			raise TypeError
