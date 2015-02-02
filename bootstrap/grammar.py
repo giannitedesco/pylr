@@ -364,17 +364,6 @@ class Grammar(object):
 					for y in sprod(nt, s):
 						yield y
 
-		def pairs():
-			x = list(sprod())
-			#x = sorted(map(lambda p:p.nt, self.p.values()))
-			for i, aa in enumerate(x):
-				for j, bb in enumerate(x):
-					if j >= i:
-						break
-					a = self.p[aa.name]
-					b = self.p[bb.name]
-					yield a, b
-
 		def f(r, b, new):
 			# no possibility of left recursion, keep it
 			if r[0] != b.nt:
@@ -387,12 +376,19 @@ class Grammar(object):
 			# remove old rule
 			return False
 
-		for a, b in pairs():
-			new = []
-			a.rules = filter(lambda x:f(x, b, new), a.rules)
-			if new:
-				print a.nt.name, 'is left recursive'
-			a.rules.extend(new)
+		x = list(sprod())
+		for i, aa in enumerate(x):
+			a = self.p[aa.name]
+			for j, bb in enumerate(x):
+				if j >= i:
+					break
+				b = self.p[bb.name]
+				new = []
+				a.rules = filter(lambda x:f(x, b, new), a.rules)
+				if new:
+					print a.nt.name, 'is left recursive'
+					print 'add', len(new), 'new rules'
+				a.rules.extend(new)
 			self.eliminate_immediate_left_recursion(a)
 
 	def left_factor(self):
