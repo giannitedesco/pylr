@@ -80,6 +80,7 @@ class Grammar(object):
 		try:
 			return self.sym[k]
 		except KeyError:
+			#print 'Adding %s'%k
 			return self.symbol(NonTerminal(k))
 
 	def __getitem__(self, k):
@@ -292,7 +293,7 @@ class Grammar(object):
 			return
 
 		nlr = filter(lambda x: not f(x), p.rules)
-		print p.nt.name, 'is left recursive'
+		print p.nt.name, 'is immediately left recursive'
 
 		prime = p.nt.new_prime()
 		self.symbol(prime)
@@ -312,16 +313,33 @@ class Grammar(object):
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
 
-		def num(p):
-			return p.nt
+		def sprod(start = None, s = set()):
+			if start is None:
+				start = self.p[SymStart().name].nt
+
+			if start in s:
+				return
+
+			s.add(start)
+			yield start
+
+			p = self.p[start.name]
+			for r in p.rules:
+				for nt in r:
+					if not isinstance(nt, NonTerminal):
+						continue
+					for y in sprod(nt, s):
+						yield y
 
 		def pairs():
-			for i in sorted(map(num, self.p.values())):
-				for j in sorted(map(num, self.p.values())):
+			x = list(sprod())
+			#x = sorted(map(lambda p:p.nt, self.p.values()))
+			for i, aa in enumerate(x):
+				for j, bb in enumerate(x):
 					if j >= i:
 						break
-					a = self.p[i.name]
-					b = self.p[j.name]
+					a = self.p[aa.name]
+					b = self.p[bb.name]
 					yield a, b
 
 		def f(r, b, new):
@@ -336,11 +354,12 @@ class Grammar(object):
 			# remove old rule
 			return False
 
-		for a, b in list(pairs()):
+		for a, b in pairs():
 			new = []
 			a.rules = filter(lambda x:f(x, b, new), a.rules)
+			if new:
+				print a.nt.name, 'is left recursive'
 			a.rules.extend(new)
-
 			self.eliminate_immediate_left_recursion(a)
 
 	def left_factor(self):
