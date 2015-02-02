@@ -17,7 +17,10 @@ class LLGen(object):
 	def construct_parse_table(self):
 		print 'Construct parse table...'
 		t = {}
-		for p in self.g:
+		for xx in self.g.reachables():
+			if not isinstance(xx, NonTerminal):
+				continue
+			p = self.g.p[xx.name]
 			for r in p:
 				A = p.nt
 				first = r[0]
@@ -31,6 +34,9 @@ class LLGen(object):
 				for a in s:
 					if t.has_key((A,a)):
 						print 'AMBIGUOUS', A, a
+						print t[A,a]
+						print r
+						print
 						continue
 					t[A,a] = r
 		#for k, v in t.items():

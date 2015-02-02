@@ -310,6 +310,27 @@ class Grammar(object):
 
 		self.production(np)
 
+	def reachables(self, start = None, s = None):
+		if s is None:
+			s = set()
+		if start is None:
+			start = self.p[SymStart().name].nt
+
+		if start in s:
+			return
+
+		s.add(start)
+		yield start
+
+		if not isinstance(start, NonTerminal):
+			return
+
+		p = self.p[start.name]
+		for r in p.rules:
+			for nt in r:
+				for y in self.reachables(nt, s):
+					yield y
+
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
 
@@ -416,13 +437,17 @@ class Grammar(object):
 
 		def factor():
 			delta = False
-			for nt, p in self.p.items():
+			#for nt, p in self.p.items():
+			for nt in self.reachables():
+				if not isinstance(nt, NonTerminal):
+					continue
+				p = self.p[nt.name]
 				r = sorted(p.rules)
 				c = lcp(r)
 				if not c:
 					continue
 
-				ns = self[nt].new_prime()
+				ns = self[nt.name].new_prime()
 				self.symbol(ns)
 				np = Production(ns)
 
@@ -461,7 +486,7 @@ class Grammar(object):
 			return s
 
 		f = {}
-		for nt in self.sym.values():
+		for nt in self.reachables():
 			if not isinstance(nt, NonTerminal):
 				continue
 			do_FIRST(nt, f)
@@ -482,7 +507,10 @@ class Grammar(object):
 				return f[nt.name]
 			s = set()
 			rec = []
-			for p in self:
+			for xx in self.reachables():
+				if not isinstance(xx, NonTerminal):
+					continue
+				p = self.p[xx.name]
 				for r in p:
 					if r[-1] is nt:
 						rec.append(p.nt)
@@ -507,7 +535,7 @@ class Grammar(object):
 			return s
 
 		f = {}
-		for nt in self.sym.values():
+		for nt in self.reachables():
 			if not isinstance(nt, NonTerminal):
 				continue
 			do_FOLLOW(nt, f)
