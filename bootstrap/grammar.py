@@ -278,9 +278,12 @@ class Grammar(object):
 
 	def dump(self):
 		print '--'
-		for l, p in sorted(self.p.items()):
+		for l in self.reachables():
+			if not isinstance(l, NonTerminal):
+				continue
+			p = self.p[l.name]
 			for r in p:
-				print l, '->', \
+				print l.name, '->', \
 					' '.join(map(lambda x:x.name, r))
 		print '--'
 
@@ -293,7 +296,9 @@ class Grammar(object):
 			return
 
 		nlr = filter(lambda x: not f(x), p.rules)
-		print p.nt.name, 'is immediately left recursive'
+		#print p.nt.name, 'is immediately left recursive'
+		#print lr
+		#print nlr
 
 		prime = p.nt.new_prime()
 		self.symbol(prime)
@@ -307,6 +312,11 @@ class Grammar(object):
 
 		for alpha in lr:
 			np.rule(alpha[1:] + [prime])
+		np.rule([SymEpsilon()])
+
+		#print np.nt.name, '->', np.rules
+		#print p.nt.name, '->', p.rules
+		#print
 
 		self.production(np)
 
@@ -541,11 +551,12 @@ class Grammar(object):
 			do_FOLLOW(nt, f)
 		f['S'] = set([SymEof()])
 
-		for k, v in sorted(f.items()):
-			if v & self.FIRST[k]:
-				print ' FIRST/FOLLOW conflict ->', k,\
-						v & self.FIRST[k]
-			#print ' ->', k, v
+		# not quite right
+		#for k, v in sorted(f.items()):
+		#	if v & self.FIRST[k]:
+		#		print ' FIRST/FOLLOW conflict ->', k,\
+		#				v & self.FIRST[k]
+		#	#print ' ->', k, v
 
 		self.FOLLOW = f
 		return f
