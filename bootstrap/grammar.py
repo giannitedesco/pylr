@@ -344,7 +344,9 @@ class Grammar(object):
 	def eliminate_left_recursion(self):
 		print 'eliminate left recursion...'
 
-		def sprod(start = None, s = set()):
+		def sprod(start = None, s = None):
+			if s is None:
+				s = set()
 			if start is None:
 				start = self.p[SymStart().name].nt
 
