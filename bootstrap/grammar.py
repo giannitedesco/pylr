@@ -277,7 +277,7 @@ class Grammar(object):
 			#print
 
 	def dump(self):
-		for l, p in self.p.items():
+		for l, p in sorted(self.p.items()):
 			for r in p:
 				print l, '->', \
 					' '.join(map(lambda x:x.name, r))
@@ -335,10 +335,86 @@ class Grammar(object):
 
 			self.eliminate_immediate_left_recursion(a)
 
+	def left_factor(self):
+		print 'Left factoring...'
+
+		def cp(a, b):
+			p = []
+			for i in xrange(min(len(a), len(b))):
+				if a[i] == b[i]:
+					p.append(a[i])
+				else:
+					break
+			return p
+
+		def lcp(rules):
+			i = 0
+			while i + 1 < len(rules):
+				x = cp(rules[i], rules[i+1])
+				if x:
+					return x
+				i += 1
+				continue
+			return None
+
+		def begins_with(s, prefix):
+			if len(s) < len(prefix):
+				return False
+			return s[:len(prefix)] == prefix
+
+		def replace(old_p, prefix, new_p):
+			# replace
+			# A-> aB1 | aB2 | ... | Abn | y
+			# with
+			# A -> aA' | y
+			# A' -> B1 | B2 | ... | Bn
+
+			old_rules = []
+			new_rules = []
+			plen = len(prefix)
+
+			old_rules.append(prefix + [new_p.nt])
+			for r in old_p.rules:
+				if begins_with(r, prefix):
+					n = r[plen:]
+					if n:
+						new_rules.append(r[plen:])
+					else:
+						new_rules.append([SymEpsilon()])
+				else:
+					old_rules.append(r)
+
+			old_p.rules = old_rules
+			new_p.rules = new_rules
+
+		def factor():
+			delta = False
+			for nt, p in self.p.items():
+				r = sorted(p.rules)
+				c = lcp(r)
+				if not c:
+					continue
+
+				ns = self[nt].new_prime()
+				self.symbol(ns)
+				np = Production(ns)
+
+				replace(p, c, np)
+				# TODO delta = True
+
+				self.production(np)
+
+
+			return delta
+
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = not factor()
+
 	def construct_FIRST(self):
-		print 'Construct FIRST function..'
 		if self.FIRST is not None:
 			return self.FIRST
+		print 'Construct FIRST function..'
 		def do_FIRST(nt, f):
 			if f.has_key(nt.name):
 				return f[nt.name]

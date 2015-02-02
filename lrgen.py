@@ -153,13 +153,25 @@ def main(argv):
 	# Add start symbol as RealStart then EOF
 	start_sym = args.start.upper().replace(' ', '_')
 	print 'Taking %s as start symbol'%start_sym
-
 	g.augment(start_sym)
 
+	# Add productions for any nonterminals without thmm
 	g.construct_markers()
+
+	# CNF step #1
+	g.wrap_terminals()
+
+	# CNF step #2
+	g.normalize()
+
+	# CNF step #4, #3 is handled by augment, above
 	g.eliminate_epsilons()
+
+	# CNF step #5
 	g.eliminate_unit_rules()
-	#g.eliminate_left_recursion()
+
+	# now we are ready to eliminate left recursion
+	g.eliminate_left_recursion()
 
 	g.construct_FOLLOW()
 

@@ -173,6 +173,10 @@ def main(argv):
 	# now we are ready to eliminate left recursion
 	g.eliminate_left_recursion()
 
+	g.left_factor()
+
+	#g.dump()
+
 	p = LLGen(g, 'S')
 
 	p.write_tables(args.base_name, path=args.includedir)
