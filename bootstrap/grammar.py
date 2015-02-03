@@ -8,6 +8,7 @@ class Production(object):
 			raise TypeError
 		self.nt = nt
 		self.rules = []
+		self.__s = set()
 		if r is not None:
 			self.rule(r)
 
@@ -15,18 +16,29 @@ class Production(object):
 		for x in r:
 			if not isinstance(x, Sym):
 				raise TypeError
-		for o in self.rules:
-			if o == r:
-				return
+		t = tuple(r)
+		if t in self.__s:
+			return
+		self.__s.add(t)
 		self.rules.append(r)
 
 	def __or__(a, b):
 		if a.nt is not b.nt:
 			raise ValueError
 		p = Production(a.nt)
-		p.rules = a.rules | b.rules
+		p.rules = a.rules + b.rules
 		return p
 
+	def __setattr__(self, attr, val):
+		if attr == 'rules':
+			setter = super(Production, self).__setattr__
+			#setter(attr, val)
+			#self.__s = set(map(tuple, val))
+			self.__s = set()
+			setter('rules', [])
+			map(self.rule, val)
+		else:
+			super(Production, self).__setattr__(attr, val)
 	def __str__(self):
 		return '%s(%s -> %s)'%(self.__class__.__name__,
 						self.nt, self.rules)
@@ -296,7 +308,7 @@ class Grammar(object):
 			return
 
 		nlr = filter(lambda x: not f(x), p.rules)
-		#print p.nt.name, 'is immediately left recursive'
+		print p.nt.name, 'is immediately left recursive'
 		#print lr
 		#print nlr
 
@@ -364,7 +376,7 @@ class Grammar(object):
 					for y in sprod(nt, s):
 						yield y
 
-		def f(r, b, new):
+		def f(r, b, new, d):
 			# no possibility of left recursion, keep it
 			if r[0] != b.nt:
 				return True
@@ -374,22 +386,81 @@ class Grammar(object):
 				new.append(nr)
 
 			# remove old rule
+			d[0] = True
 			return False
 
-		x = list(sprod())
-		for i, aa in enumerate(x):
-			a = self.p[aa.name]
-			for j, bb in enumerate(x):
-				if j >= i:
-					break
-				b = self.p[bb.name]
-				new = []
-				a.rules = filter(lambda x:f(x, b, new), a.rules)
-				if new:
-					print a.nt.name, 'is left recursive'
-					print 'add', len(new), 'new rules'
-				a.rules.extend(new)
-			self.eliminate_immediate_left_recursion(a)
+		def elim(a, b):
+			new = []
+			d = [False]
+			a.rules = filter(lambda x:f(x, b, new, d), a.rules)
+			if new:
+				print a.nt.name, 'is left recursive'
+				print 'add', len(new), 'new rules'
+			a.rules.extend(new)
+			return d[0]
+
+		def recursive_elim(x):
+			delta = False
+			for i, aa in enumerate(x):
+				a = self.p[aa.name]
+				for j, bb in enumerate(x):
+					if j >= i:
+						break
+					b = self.p[bb.name]
+					if elim(a, b):
+						delta = True
+				self.eliminate_immediate_left_recursion(a)
+			return delta
+
+		def lcycle(nt, stack = None, s = None):
+			if stack is None:
+				stack = []
+			if s is None:
+				s = set()
+			elif nt == stack[0]:
+				return stack
+			if nt in s:
+				return []
+			stack.append(nt)
+			s.add(nt)
+			p = self.p[nt.name]
+			for r in p:
+				if not isinstance(r[0], NonTerminal):
+					continue
+				if lcycle(r[0], stack, s):
+					return stack
+			stack.pop()
+			return []
+
+		fixpoint = False
+		reachables = list(sprod())
+		while not fixpoint:
+			fixpoint = True
+			for x in reachables:
+				path = lcycle(x)
+				if len(path) != 1:
+					continue
+				path.reverse()
+				p = self.p[path[0].name]
+				self.eliminate_immediate_left_recursion(p)
+				fixpoint = False
+
+		recursive_elim(list(sprod()))
+		#recs = set()
+		#fixpoint = False
+		#while not fixpoint:
+		#	fixpoint = True
+			#for x in reachables:
+				#path = lcycle(x)
+				#if path:
+				#	if len(path) > 1:
+				#		print '--------->', path
+				#		recs.update(path)
+				#		if recursive_elim(path):
+				#			fixpoint = False
+				#		continue
+				#	p = self.p[path[0].name]
+				#	self.eliminate_immediate_left_recursion(p)
 
 	def left_factor(self):
 		print 'Left factoring...'
