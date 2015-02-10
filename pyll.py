@@ -59,6 +59,7 @@ def main(argv):
 	g.production(Production(g['S'], [g[start_sym], SymEof()]))
 
 	g.construct_markers()
+	g.dump()
 	g.eliminate_left_recursion()
 
 	p = LLGen(g, 'S')

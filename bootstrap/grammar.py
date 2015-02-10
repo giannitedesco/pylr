@@ -113,6 +113,63 @@ class Grammar(object):
 					not self.p.has_key(s.name):
 				self.p[s.name] = Production(s, [SymEpsilon()])
 
+	def remove_singletons(self):
+		"remove artefacts from bnf conversion"
+
+		def build_graph():
+			g = {}
+			for nt in list(self.reachables()):
+				if not isinstance(nt, NonTerminal):
+					continue
+				p = self.p[nt.name]
+				for r in p.rules:
+					if len(r) != 1:
+						continue
+					g.setdefault(r[0], list()).append(nt)
+			return g
+
+		def f(r, b):
+			if r != [b.nt]:
+				return True
+
+			# remove old rule
+			return False
+
+		fixpoint = False
+		killed = set()
+		while not fixpoint:
+			fixpoint = True
+			g = build_graph()
+			for nt in list(self.reachables()):
+				if not isinstance(nt, NonTerminal):
+					continue
+				if not nt.is_prime():
+					continue
+				if not self.p.has_key(nt.name):
+					continue
+				if not g.has_key(nt):
+					continue
+				if len(g[nt]) != 1:
+					continue
+				pre = self.p[g[nt][0].name]
+				post = self.p[nt.name]
+				print 'considering', nt, pre.nt.name
+
+				new = list()
+				pre.rules = filter(lambda x:f(x, post),
+							pre.rules)
+				pre.rules.extend(post.rules)
+				killed.add(nt)
+
+				fixpoint = False
+
+		for k in killed:
+			if k in self.nt:
+				self.nt.remove(k)
+			del self.sym[k.name]
+			del self.lookup[k.val]
+			del self.p[k.name]
+
 	def wrap_terminals(self):
 		print 'wrap terminals...'
 		for t in map(self.__getitem__, self.t):
@@ -223,9 +280,8 @@ class Grammar(object):
 				if self[l].terminal_marker:
 					continue
 				for r in p:
-					if len(r) == 2:
+					if len(r) != 1:
 						continue
-					assert(len(r) == 1)
 					yield self[l], r[0]
 
 		def make_dot_file(gen):
@@ -267,7 +323,7 @@ class Grammar(object):
 					e.rule(r)
 					continue
 			def nonunit(r):
-				return len(r) == 2
+				return len(r) != 2
 			f.rules = filter(nonunit, e.rules)
 
 			# remove rule E -> F
@@ -433,9 +489,9 @@ class Grammar(object):
 			return []
 
 		fixpoint = False
-		reachables = list(sprod())
 		while not fixpoint:
 			fixpoint = True
+			reachables = list(sprod())
 			for x in reachables:
 				path = lcycle(x)
 				if len(path) != 1:
@@ -445,7 +501,7 @@ class Grammar(object):
 				self.eliminate_immediate_left_recursion(p)
 				fixpoint = False
 
-		recursive_elim(list(sprod()))
+		#recursive_elim(list(sprod()))
 		#recs = set()
 		#fixpoint = False
 		#while not fixpoint:

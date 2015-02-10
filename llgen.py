@@ -70,7 +70,7 @@ def recurse(nt, node, g):
 		g.production(p)
 		return [p.nt]
 	elif isinstance(node, AstLink):
-		return [g[node.p.upper().replace(' ', '_')]]
+		return [g.get(node.p.upper().replace(' ', '_'))]
 	elif isinstance(node, AstConcat):
 		return a + b
 	else:
@@ -153,34 +153,45 @@ def main(argv):
 	# Add start symbol as RealStart then EOF
 	start_sym = args.start.upper().replace(' ', '_')
 	print 'Taking %s as start symbol'%start_sym
-	g.augment(start_sym)
+	#g.augment(start_sym)
+	g.symbol(NonTerminal('S'))
+	g.production(Production(g['S'], [g[start_sym], SymEof()]))
 
 	# Add productions for any nonterminals without thmm
 	g.construct_markers()
 
+	g.remove_singletons()
+	g.dump()
+
 	# CNF step #1
-	g.wrap_terminals()
+	#g.wrap_terminals()
 
 	# CNF step #2
-	g.normalize()
+	#g.normalize()
 
 	# CNF step #4, #3 is handled by augment, above
-	g.eliminate_epsilons()
+	#g.eliminate_epsilons()
 
 	# CNF step #5
-	g.eliminate_unit_rules()
+	#g.eliminate_unit_rules()
+
+	#g.dump()
 
 	# now we are ready to eliminate left recursion
 	g.eliminate_left_recursion()
 
-	g.left_factor()
+	#g.dump()
+	#raise SystemExit
+
+	#g.left_factor()
 
 	#g.dump()
-
 	p = LLGen(g, 'S')
 
 	p.write_tables(args.base_name, path=args.includedir)
 
+	#for i in sorted(map(lambda x:x.nt, g.p.values())):
+	#	print i.val, i
 	return EXIT_SUCCESS
 
 if __name__ == '__main__':
