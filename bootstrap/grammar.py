@@ -1,5 +1,84 @@
 from symbol import *
+from ast import *
 from graph import Graph
+
+def recurse(nt, node, g):
+
+	if isinstance(node, AstUnary):
+		op = recurse(nt, node.op, g)
+	elif isinstance(node, AstBinary):
+		a = recurse(nt, node.a, g)
+		b = recurse(nt, node.b, g)
+
+	if isinstance(node, AstSquares):
+		# [A] -> A | epsilon
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
+		p.rule(op)
+		p.rule([SymEpsilon()])
+		g.production(p)
+		return [p.nt]
+	elif isinstance(node, AstClosure):
+		# A* -> A | AA
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
+		p.rule(op)
+		p.rule(op + op)
+		g.production(p)
+		return [p.nt]
+	elif isinstance(node, AstChoice):
+		# two new prime productions
+		s = nt.new_prime()
+		g.symbol(s)
+		p = Production(s)
+		p.rule(a)
+		p.rule(b)
+		g.production(p)
+		return [p.nt]
+	elif isinstance(node, AstLink):
+		return [g.get(node.p.upper().replace(' ', '_'))]
+	elif isinstance(node, AstConcat):
+		return a + b
+	else:
+		print node
+		assert(False)
+
+def bnf_to_production(g, name, bnf):
+	sym_name = name.upper().replace(' ', '_')
+	sym = g[sym_name]
+
+	#print '--', name
+	#bnf.pretty_print()
+	#print
+
+	# First check the tree
+	for node in bnf:
+		if isinstance(node, AstLiteral):
+			print 'rule "%s", literal "%s" not allowed'%(\
+					name, node.literal)
+			return
+
+	r = recurse(sym, bnf, g)
+
+	p = Production(sym)
+	p.rule(r)
+	g.production(p)
+
+	return p
+
+def make_grammar(p = {}, s = {}):
+	g = Grammar()
+	for v in s.values():
+		g.symbol(v)
+	for k in p:
+		g.symbol(NonTerminal(k.upper().replace(' ', '_')))
+	for v in sorted(p.values()):
+		p = bnf_to_production(g, v.name, v.root)
+		if p is None:
+			return None
+	return g
 
 class Production(object):
 	def __init__(self, nt, r = None):
@@ -63,6 +142,9 @@ class Grammar(object):
 		self.p = {}
 		self.FIRST = None
 		self.FOLLOW = None
+
+	def from_bnf(self, nonterminals, rules):
+		return make_grammar(nonterminals, rules)
 
 	def augment(self, start_sym):
 		self.symbol(SymStart())
@@ -153,7 +235,6 @@ class Grammar(object):
 					continue
 				pre = self.p[g[nt][0].name]
 				post = self.p[nt.name]
-				print 'considering', nt, pre.nt.name
 
 				new = list()
 				pre.rules = filter(lambda x:f(x, post),

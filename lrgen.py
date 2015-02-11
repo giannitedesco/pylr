@@ -34,84 +34,6 @@ def parse_terminals(fn, tbl = {}):
 		tbl[t.name] = t
 	return tbl
 
-def recurse(nt, node, g):
-
-	if isinstance(node, AstUnary):
-		op = recurse(nt, node.op, g)
-	elif isinstance(node, AstBinary):
-		a = recurse(nt, node.a, g)
-		b = recurse(nt, node.b, g)
-
-	if isinstance(node, AstSquares):
-		# [A] -> A | epsilon
-		s = nt.new_prime()
-		g.symbol(s)
-		p = Production(s)
-		p.rule(op)
-		p.rule([SymEpsilon()])
-		g.production(p)
-		return [p.nt]
-	elif isinstance(node, AstClosure):
-		# A* -> A | AA
-		s = nt.new_prime()
-		g.symbol(s)
-		p = Production(s)
-		p.rule(op)
-		p.rule(op + op)
-		g.production(p)
-		return [p.nt]
-	elif isinstance(node, AstChoice):
-		# two new prime productions
-		s = nt.new_prime()
-		g.symbol(s)
-		p = Production(s)
-		p.rule(a)
-		p.rule(b)
-		g.production(p)
-		return [p.nt]
-	elif isinstance(node, AstLink):
-		return [g[node.p.upper().replace(' ', '_')]]
-	elif isinstance(node, AstConcat):
-		return a + b
-	else:
-		print node
-		assert(False)
-
-def bnf_to_production(g, name, bnf):
-	sym_name = name.upper().replace(' ', '_')
-	sym = g[sym_name]
-
-	#print '--', name
-	#bnf.pretty_print()
-	#print
-
-	# First check the tree
-	for node in bnf:
-		if isinstance(node, AstLiteral):
-			print 'rule "%s", literal "%s" not allowed'%(\
-					name, node.literal)
-			return
-
-	r = recurse(sym, bnf, g)
-
-	p = Production(sym)
-	p.rule(r)
-	g.production(p)
-
-	return p 
-
-def make_grammar(r, p = {}, s = {}):
-	g = Grammar()
-	for v in s.values():
-		g.symbol(v)
-	for k in p:
-		g.symbol(NonTerminal(k.upper().replace(' ', '_')))
-	for k,v in p.items():
-		p = bnf_to_production(g, k, v.root)
-		if p is None:
-			return None
-	return g
-
 def main(argv):
 	EXIT_SUCCESS = 0
 	EXIT_FAILURE = 1
@@ -146,7 +68,7 @@ def main(argv):
 	map(lambda x:parse_terminals(x, s), args.terminals)
 	map(lambda x:parse_bnf(x, nt), args.files)
 
-	g = make_grammar(nt[args.start], nt, s)
+	g = Grammar().from_bnf(nt, s)
 	if g is None:
 		return EXIT_FAILURE
 
@@ -158,17 +80,8 @@ def main(argv):
 	# Add productions for any nonterminals without thmm
 	g.construct_markers()
 
-	# CNF step #1
-	g.wrap_terminals()
-
-	# CNF step #2
-	g.normalize()
-
-	# CNF step #4, #3 is handled by augment, above
-	g.eliminate_epsilons()
-
-	# CNF step #5
-	g.eliminate_unit_rules()
+	# remove temporary productions added by BNF converter
+	g.remove_singletons()
 
 	# now we are ready to eliminate left recursion
 	g.eliminate_left_recursion()
