@@ -75,9 +75,7 @@ def main(argv):
 	# Add start symbol as RealStart then EOF
 	start_sym = args.start.upper().replace(' ', '_')
 	print 'Taking %s as start symbol'%start_sym
-	#g.augment(start_sym)
-	g.symbol(NonTerminal('S'))
-	g.production(Production(g['S'], [g[start_sym], SymEof()]))
+	g.augment(start_sym)
 
 	# Add productions for any nonterminals without thmm
 	g.construct_markers()

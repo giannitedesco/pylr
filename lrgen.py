@@ -86,6 +86,8 @@ def main(argv):
 	# now we are ready to eliminate left recursion
 	g.eliminate_left_recursion()
 
+	g.dump()
+
 	g.construct_FOLLOW()
 
 	#p = LRGen(g, 'S')

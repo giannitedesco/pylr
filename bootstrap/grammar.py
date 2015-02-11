@@ -427,7 +427,7 @@ class Grammar(object):
 
 	def dump(self):
 		print '--'
-		for l in self.reachables():
+		for l in sorted(self.reachables()):
 			if not isinstance(l, NonTerminal):
 				continue
 			p = self.p[l.name]

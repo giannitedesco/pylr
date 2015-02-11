@@ -25,7 +25,7 @@ class SymEpsilon(Sym):
 		if cls.__instance is None:
 			cls.__instance = super(SymEpsilon, cls).__new__(cls, \
 							*args, **kwargs)
-			super(SymEpsilon, cls.__instance).__init__('ε')
+			super(SymEpsilon, cls.__instance).__init__('ε', val=-1)
 		return cls.__instance
 	def __init__(self):
 		pass
@@ -40,7 +40,7 @@ class SymEof(Sym):
 		if cls.__instance is None:
 			cls.__instance = super(SymEof, cls).__new__(cls, \
 							*args, **kwargs)
-			super(SymEof, cls.__instance).__init__('$')
+			super(SymEof, cls.__instance).__init__('$', val=-2)
 		return cls.__instance
 	def __init__(self):
 		pass
@@ -81,7 +81,7 @@ class SymStart(NonTerminal):
 		if cls.__instance is None:
 			cls.__instance = super(SymStart, cls).__new__(cls, \
 							*args, **kwargs)
-			super(SymStart, cls.__instance).__init__('S')
+			super(SymStart, cls.__instance).__init__('S', val=-3)
 		return cls.__instance
 	def __init__(self):
 		pass

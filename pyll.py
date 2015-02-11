@@ -55,11 +55,9 @@ def main(argv):
 
 	# Add start symbol as RealStart then EOF
 	print 'Taking %s as start symbol'%start_sym
-	g.symbol(NonTerminal('S'))
-	g.production(Production(g['S'], [g[start_sym], SymEof()]))
+	g.augment(start_sym)
 
 	g.construct_markers()
-	g.dump()
 	g.eliminate_left_recursion()
 
 	p = LLGen(g, 'S')
