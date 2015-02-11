@@ -62,6 +62,7 @@ __all__ = [
 
 	# llgen.py
 	'LLGen',
+	'LRGen',
 ]
 
 from tokens import *
@@ -76,3 +77,4 @@ from symbol import *
 from grammar import Production, Grammar
 
 from llgen import LLGen
+from lrgen import LRGen

@@ -90,8 +90,8 @@ def main(argv):
 
 	g.construct_FOLLOW()
 
-	#p = LRGen(g, 'S')
-	#p.write_tables(args.base_name, path=args.includedir)
+	p = LRGen(g, 'S')
+	p.write_tables(args.base_name, path=args.includedir)
 
 	return EXIT_SUCCESS
 
