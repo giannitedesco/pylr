@@ -126,7 +126,11 @@ class ParseTree(object):
 		self.__last = tok
 		c = self.__cb[tok.__class__]
 		c(self, tok)
-	
+
+	def __cmp__(a, b):
+		assert(isinstance(b, ParseTree))
+		return cmp(a.lineno, b.lineno)
+
 	def eof(self):
 		self.__clear_stack()
 		if self.stack:

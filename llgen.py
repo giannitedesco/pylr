@@ -106,8 +106,8 @@ def make_grammar(r, p = {}, s = {}):
 		g.symbol(v)
 	for k in p:
 		g.symbol(NonTerminal(k.upper().replace(' ', '_')))
-	for k,v in p.items():
-		p = bnf_to_production(g, k, v.root)
+	for v in sorted(p.values()):
+		p = bnf_to_production(g, v.name, v.root)
 		if p is None:
 			return None
 	return g
