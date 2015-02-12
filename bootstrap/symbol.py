@@ -18,6 +18,8 @@ class Sym(object):
 		if not isinstance(b, Sym):
 			raise TypeError
 		return a.val.__cmp__(b.val)
+	def cname(self):
+		return 'SYM_' + self.name
 
 class SymEpsilon(Sym):
 	__instance = None
@@ -33,6 +35,8 @@ class SymEpsilon(Sym):
 		return self.name
 	def __repr__(self):
 		return self.name
+	def cname(self):
+		return 'SYM_EPSILON'
 
 class SymEof(Sym):
 	__instance = None
@@ -48,10 +52,14 @@ class SymEof(Sym):
 		return self.name
 	def __repr__(self):
 		return self.name
+	def cname(self):
+		return 'SYM_EOF'
 
 class Terminal(Sym):
 	def __init__(self, name):
 		super(Terminal, self).__init__(name)
+	def cname(self):
+		return self.name
 
 class NonTerminal(Sym):
 	def __init__(self, name, prime_for = None, **kwargs):

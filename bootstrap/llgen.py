@@ -76,8 +76,8 @@ class LLGen(object):
 		f.write('{\n')
 		f.write('\tswitch(sym) {\n')
 		for nt in sorted(self.g.sym.values()):
-			f.write('\tcase %s:\n'%(cname(nt)))
-			f.write('\t\treturn "%s";\n'%(cname(nt)))
+			f.write('\tcase %s:\n'%(nt.cname()))
+			f.write('\t\treturn "%s";\n'%(nt.name))
 		f.write('\tcase SYM_EOF:\n')
 		f.write('\t\treturn "EOF";\n')
 		f.write('\tcase SYM_EPSILON:\n')

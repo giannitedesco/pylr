@@ -205,49 +205,45 @@ class LRGen(object):
 				goto[key] = val
 		return goto
 
+	def write_sym_defs(self, f):
+		f.write('#define SYM_EOF %d\n'%SymEof().val)
+		f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
+		for nt in sorted(self.g.sym.values()):
+			if not isinstance(nt, NonTerminal):
+				continue
+			f.write('#define %s %d\n'%(nt.cname(), nt.val))
+
+	def write_sym_names(self, f):
+		f.write('static inline const char *sym_name(int sym)\n')
+		f.write('{\n')
+		f.write('\tswitch(sym) {\n')
+		for nt in sorted(self.g.sym.values()):
+			f.write('\tcase %s:\n'%(nt.cname()))
+			f.write('\t\treturn "%s";\n'%(nt.name))
+		f.write('\tcase SYM_EOF:\n')
+		f.write('\t\treturn "EOF";\n')
+		f.write('\tcase SYM_EPSILON:\n')
+		f.write('\t\treturn "EPSILON";\n')
+		f.write('\tdefault:\n')
+		f.write('\t\treturn "<<UNKNOWN>>";\n')
+		f.write('\t}\n')
+		f.write('}\n')
+
 	def write_tables(self, name, path='.'):
 		from os.path import join
 
 		fn = join(path, name + '.h')
 		print 'writing', fn
 
-		def cname(s):
-			if s is SymEpsilon():
-				return 'SYM_EPSILON'
-			if s is SymEof():
-				return 'SYM_EOF'
-			if isinstance(s, NonTerminal):
-				return 'SYM_' + s.name.replace("'", '_PRIME')
-			else:
-				return s.name
-
 		f = open(fn, 'w')
 		f.write('#ifndef _%s_H\n'%name.upper())
 		f.write('#define _%s_H\n'%name.upper())
 		f.write('\n')
 
-		f.write('#define SYM_EOF %d\n'%SymEof().val)
-		f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
-		for nt in sorted(self.g.sym.values()):
-			if not isinstance(nt, NonTerminal):
-				continue
-			f.write('#define %s %d\n'%(cname(nt), nt.val))
+		self.write_sym_defs(f)
 		f.write('\n')
 
-		f.write('static inline const char *sym_name(int sym)\n')
-		f.write('{\n')
-		f.write('\tswitch(sym) {\n')
-		for nt in sorted(self.g.sym.values()):
-			f.write('\tcase %s:\n'%(cname(nt)))
-			f.write('\t\treturn "%s";\n'%(cname(nt)))
-		f.write('\tcase SYM_EOF:\n')
-		f.write('\t\treturn "EOF";\n')
-		f.write('\tcase SYM_EPSILON:\n')
-		f.write('\t\treturn "EPSILON";\n')
-		f.write('\tdefault:\n')
-		f.write('\t\treturn "UNKNOWN";\n')
-		f.write('\t}\n')
-		f.write('}\n\n')
-
+		self.write_sym_names(f)
 		f.write('\n')
+
 		f.write('#endif /* _%s_H */\n'%name.upper())
