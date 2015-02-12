@@ -4,26 +4,14 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <ctype.h>
+#include <stdint.h>
 
 #include "lex.h"
+#include "grammar.h"
 
 static int tok_cb(tok_t tok, void *priv)
 {
-	switch(tok->t_type) {
-#ifdef TOK_LITERAL
-	case TOK_LITERAL:
-		printf("TOK_LITERAL: %s\n", tok->t_u.tu_str);
-		break;
-#endif
-#ifdef TOK_IDENTIFIER
-	case TOK_IDENTIFIER:
-		printf("TOK_IDENTIFIER: %s\n", tok->t_u.tu_str);
-		break;
-#endif
-	default:
-		printf("tok type %u\n", tok->t_type);
-		break;
-	}
+	printf("token: %s\n", sym_name(tok->t_type));
 	return 1;
 }
 
@@ -43,7 +31,7 @@ static int lex_file(const char *fn)
 
 	f = fopen(fn, "r");
 	if ( NULL == f ) {
-		fprintf(stderr, "open: %s: %s", fn, strerror(errno));
+		fprintf(stderr, "open: %s: %s\n", fn, strerror(errno));
 		goto out_free;
 	}
 
@@ -54,7 +42,7 @@ static int lex_file(const char *fn)
 	}
 
 	if ( ferror(f) || !lexer_eof(lex) ) {
-		fprintf(stderr, "lex: %s: %s", fn, strerror(errno));
+		fprintf(stderr, "lex: %s: %s\n", fn, strerror(errno));
 		goto out_close;
 	}
 
