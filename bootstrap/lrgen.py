@@ -229,6 +229,58 @@ class LRGen(object):
 		f.write('\t}\n')
 		f.write('}\n')
 
+	def write_goto_table(self, f):
+		print >>f, 'static const struct {'
+		print >>f, '\tunsigned int i;'
+		print >>f, '\tint A;'
+		print >>f, '\tunsigned int j;'
+		print >>f, '}GOTO[] = {'
+		for ((i, A), j) in sorted(self.goto.items()):
+			print >> f, '\t{ %d, %s, %d },'%(i, A.cname(), j)
+		print >>f, '};'
+
+	def write_action_table(self, f):
+		print >>f, '#define ACTION_ERROR\t0'
+		print >>f, '#define ACTION_ACCEPT\t1'
+		print >>f, '#define ACTION_SHIFT\t2'
+		print >>f, '#define ACTION_REDUCE\t3'
+		print >>f
+		print >>f, 'struct shift_move {'
+		print >>f, '\tunsigned int t;'
+		print >>f, '};'
+		print >>f
+		print >>f, 'struct reduce_move {'
+		print >>f, '\tunsigned int len;'
+		print >>f, '\tconst char *reduction;'
+		print >>f, '};'
+		print >>f
+		print >>f, 'static const struct action {'
+		print >>f, '\tunsigned int i;'
+		print >>f, '\tint a;'
+		print >>f, '\tuint8_t action;;'
+		print >>f, '\tunion {'
+		print >>f, '\t\tstruct shift_move shift;'
+		print >>f, '\t\tstruct reduce_move reduce;'
+		print >>f, '\t}u;'
+		print >>f, '}ACTION[] = {'
+		for ((i,a), (c, v)) in sorted(self.action.items()):
+			print >>f, '\t{'
+			print >>f, '\t\t.i = %d,'%i
+			print >>f, '\t\t.a = %s,'%a.cname()
+			print >>f, '\t\t.action = ACTION_%s,'%c.upper()
+			if c == 'shift':
+				print >>f, '\t\t.u.shift = { .t = %d },'%v
+			elif c == 'reduce':
+				l = len(v[1])
+				r = '%s -> %s'%(v[0].name,
+					' '.join(map(lambda x:x.name, v[1])))
+				print >>f, '\t\t.u.reduce = {'
+				print >>f, '\t\t\t.len = %d,'%l
+				print >>f, '\t\t\t.reduction = "%s",'%r
+				print >>f, '\t\t},'
+			print >>f, '\t},'
+		print >>f, '};'
+
 	def write_tables(self, name, path='.'):
 		from os.path import join
 
@@ -244,6 +296,12 @@ class LRGen(object):
 		f.write('\n')
 
 		self.write_sym_names(f)
+		f.write('\n')
+
+		self.write_action_table(f)
+		f.write('\n')
+
+		self.write_goto_table(f)
 		f.write('\n')
 
 		f.write('#endif /* _%s_H */\n'%name.upper())
