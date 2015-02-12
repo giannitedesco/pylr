@@ -4,12 +4,16 @@ from grammar import Grammar
 # This should be the rule class, remove pos
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
-	def __new__(cls, *args, **kwargs):
-		return super(Item, cls).__new__(cls, *args)
-	def __init__(self, *args, **kwargs):
+	def __new__(cls, arg = [], **kwargs):
+		if arg and arg[-1] is SymEof():
+			arg = arg[:-1]
+		return super(Item, cls).__new__(cls, arg)
+	def __init__(self, arg = [], **kwargs):
 		self.head = kwargs.pop('head')
 		self.pos = int(kwargs.pop('pos'))
-		super(Item, self).__init__(*args, **kwargs)
+		if arg and arg[-1] is SymEof():
+			arg = arg[:-1]
+		super(Item, self).__init__(arg, **kwargs)
 		assert(self.pos >= 0)
 		assert(self.pos <= len(self))
 	def __str__(self):
@@ -63,13 +67,16 @@ class LRGen(object):
 			raise TypeError
 		#self.g.construct_FIRST()
 		#self.g.construct_FOLLOW()
-		self.items = self.construct_items()
 		self.parse = self.construct_parse_table()
 
+		cc = self.canonical_collection()
+		for c in cc:
+			print c
+
+	def start_item(self):
 		s = self.g.p['S']
-		x = self.closure(set([Item(s.rules[0], head = s.nt, pos = 0)]))
-		print x
-		print self.GOTO(x, g.sym['TOK_MARK_LPAREN'])
+		return Item(s.rules[0], head = s.nt, pos = 0)
+
 	def closure(self, I):
 		J = set(I) # copy it
 		fixpoint = False
@@ -88,10 +95,10 @@ class LRGen(object):
 						continue
 					fixpoint = False
 					J.add(i)
-		return J
+		return frozenset(J)
 
 	def GOTO(self, I, t):
-		assert(isinstance(t, Terminal))
+		assert(isinstance(t, Sym))
 
 		s = set()
 		for i in I:
@@ -104,26 +111,22 @@ class LRGen(object):
 
 		return self.closure(s)
 
-	def construct_items(self):
-		print 'Constructing items'
+	def canonical_collection(self):
+		C = set()
 
-		I = set()
+		C.add(self.closure(frozenset([self.start_item()])))
 
-		for nt in self.g.reachables():
-			if not self.g.p.has_key(nt.name):
-				continue
-			for r in self.g.p[nt.name]:
-				if r == [SymEpsilon()]:
-					i = Item(head = nt, pos = 0)
-					I.add(i)
-					print i
-					continue
-				for p in xrange(len(r) + 1):
-					i = Item(r, head = nt, pos = p)
-					I.add(i)
-					print i
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = True
 
-		return I
+			for I in list(C):
+				for X in self.g.reachables():
+					g = self.GOTO(I, X)
+					if g and g not in C:
+						C.add(g)
+						fixpoint = False
+		return frozenset(C)
 
 	def construct_parse_table(self):
 		print 'Construct parse table...'
