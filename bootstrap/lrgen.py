@@ -65,13 +65,13 @@ class LRGen(object):
 			raise TypeError
 		if not isinstance(self.start, NonTerminal):
 			raise TypeError
-		#self.g.construct_FIRST()
-		#self.g.construct_FOLLOW()
-		self.parse = self.construct_parse_table()
 
-		cc = self.canonical_collection()
-		for c in cc:
-			print c
+		self.C = self.canonical_collection()
+
+		self.g.eliminate_left_recursion()
+		self.g.construct_FOLLOW()
+
+		self.parse = self.construct_action_table()
 
 	def start_item(self):
 		s = self.g.p['S']
@@ -128,8 +128,56 @@ class LRGen(object):
 						fixpoint = False
 		return frozenset(C)
 
-	def construct_parse_table(self):
-		print 'Construct parse table...'
+	def construct_action_table(self):
+		print 'Construct action table...'
+
+		numbering = {}
+		for i, I in enumerate(self.C):
+			numbering[I] = i
+
+		action = {}
+
+		for (I, inum) in numbering.items():
+			if self.start_item() in I:
+				key = (inum, SymEof())
+				val = ('accept', True)
+				if action.has_key(key):
+					assert(val == action[key])
+
+				action[key] = val
+
+			for i in I:
+				try:
+					nxt = i[i.pos]
+				except IndexError:
+					if len(i) == 1 and i[0] is SymEpsilon():
+						continue
+					if i.head is SymStart():
+						continue
+					for a in self.g.FOLLOW[i.head.name]:
+						key = (inum, a)
+						val = ('reduce', (i.head, tuple(i)))
+						if action.has_key(key):
+							assert(val == action[key])
+						action[key] = val
+					continue
+				g = self.GOTO(I, nxt)
+				val = numbering.get(g, None)
+				if val is None:
+					continue
+				val = ('shift', val)
+				key = inum, nxt
+
+				if action.has_key(key):
+					assert(val == action[key])
+
+				action[key] = val
+
+		for k, v in sorted(action.items()):
+			print k, '->', v
+
+		print len(action), 'entries'
+		return action
 
 	def write_tables(self, name, path='.'):
 		from os.path import join
