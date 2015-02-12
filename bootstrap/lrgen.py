@@ -127,6 +127,7 @@ class LRGen(object):
 		return self.closure(s)
 
 	def canonical_collection(self):
+		print 'construct canonical LR(0) collection'
 		C = set()
 
 		C.add(self.closure(frozenset([self.start_item()])))
@@ -191,6 +192,8 @@ class LRGen(object):
 		return action
 
 	def construct_goto(self):
+		print 'Construct goto table...'
+
 		goto = {}
 		for (I, inum) in self.numbering.items():
 			for t in self.g.reachables():
@@ -203,6 +206,8 @@ class LRGen(object):
 				key = (inum, t)
 				val = out
 				goto[key] = val
+
+		print 'goto table:', len(goto), 'entries'
 		return goto
 
 	def write_sym_defs(self, f):
