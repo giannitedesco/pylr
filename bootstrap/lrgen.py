@@ -27,27 +27,26 @@ class Item(tuple):
 	def __repr__(self):
 		return str(self)
 
-	def __cmp__(a, b):
-		raise Exception
+	def __cmp(a, b):
 		r = cmp(a.head, b.head)
 		if r:
 			return r
-		r = super(Item, a).__cmp__(b)
+		r = cmp(tuple(a), tuple(b))
 		if r:
 			return r
 		return cmp(a.pos, b.pos)
 	def __eq__(a, b):
-		return (cmp(a, b) == 0)
+		return (a.__cmp(b) == 0)
 	def __neq__(a, b):
-		return (cmp(a, b) != 0)
+		return (a.__cmp(b) != 0)
 	def __gt__(a, b):
-		return (cmp(a, b) > 0)
+		return (a.__cmp(b) > 0)
 	def __lt__(a, b):
-		return (cmp(a, b) < 0)
+		return (a.__cmp(b) < 0)
 	def __gte__(a, b):
-		return (cmp(a, b) >= 0)
+		return (a.__cmp(b) >= 0)
 	def __lte__(a, b):
-		return (cmp(a, b) <= 0)
+		return (a.__cmp(b) <= 0)
 	def __hash__(self):
 		return super(Item, self).__hash__() \
 			^ hash(self.pos) \
@@ -62,10 +61,33 @@ class LRGen(object):
 			raise TypeError
 		if not isinstance(self.start, NonTerminal):
 			raise TypeError
-		self.g.construct_FIRST()
-		self.g.construct_FOLLOW()
+		#self.g.construct_FIRST()
+		#self.g.construct_FOLLOW()
 		self.items = self.construct_items()
 		self.parse = self.construct_parse_table()
+
+		s = self.g.p['S']
+		print self.closure(set([Item(s.rules[0], head = s.nt, pos = 0)]))
+
+	def closure(self, I):
+		J = set(I) # copy it
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = True
+			for j in list(J):
+				try:
+					B = j[j.pos]
+				except IndexError:
+					continue
+				if not isinstance(B, NonTerminal):
+					continue
+				for r in self.g.p[B.name]:
+					i = Item(r, head = B, pos = 0)
+					if i in J:
+						continue
+					fixpoint = False
+					J.add(i)
+		return J
 
 	def construct_items(self):
 		print 'Constructing items'
