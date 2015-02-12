@@ -71,11 +71,26 @@ class LRGen(object):
 		self.g.eliminate_left_recursion()
 		self.g.construct_FOLLOW()
 
-		self.parse = self.construct_action_table()
+		self.numbering = self.number_states(self.C)
+		self.action = self.construct_action_table()
+		self.goto = self.construct_goto()
+		self.initial = self.initial_state()
+
+	def number_states(self, C):
+		numbering = {}
+		for i, I in enumerate(C):
+			numbering[I] = i
+		return numbering
 
 	def start_item(self):
 		s = self.g.p['S']
 		return Item(s.rules[0], head = s.nt, pos = 0)
+
+	def initial_state(self):
+		s = self.start_item()
+		for (I, inum) in self.numbering.items():
+			if s in I:
+				return inum
 
 	def closure(self, I):
 		J = set(I) # copy it
@@ -131,13 +146,9 @@ class LRGen(object):
 	def construct_action_table(self):
 		print 'Construct action table...'
 
-		numbering = {}
-		for i, I in enumerate(self.C):
-			numbering[I] = i
-
 		action = {}
 
-		for (I, inum) in numbering.items():
+		for (I, inum) in self.numbering.items():
 			if self.start_item() in I:
 				key = (inum, SymEof())
 				val = ('accept', True)
@@ -162,7 +173,7 @@ class LRGen(object):
 						action[key] = val
 					continue
 				g = self.GOTO(I, nxt)
-				val = numbering.get(g, None)
+				val = self.numbering.get(g, None)
 				if val is None:
 					continue
 				val = ('shift', val)
@@ -173,11 +184,26 @@ class LRGen(object):
 
 				action[key] = val
 
-		for k, v in sorted(action.items()):
-			print k, '->', v
+		#for k, v in sorted(action.items()):
+		#	print k, '->', v
 
-		print len(action), 'entries'
+		print 'action table:', len(action), 'entries'
 		return action
+
+	def construct_goto(self):
+		goto = {}
+		for (I, inum) in self.numbering.items():
+			for t in self.g.reachables():
+				if not isinstance(t, Terminal):
+					continue
+				g = self.GOTO(I,t)
+				out = self.numbering.get(g, None)
+				if out is None:
+					continue
+				key = (inum, t)
+				val = out
+				goto[key] = val
+		return goto
 
 	def write_tables(self, name, path='.'):
 		from os.path import join
