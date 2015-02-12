@@ -67,8 +67,9 @@ class LRGen(object):
 		self.parse = self.construct_parse_table()
 
 		s = self.g.p['S']
-		print self.closure(set([Item(s.rules[0], head = s.nt, pos = 0)]))
-
+		x = self.closure(set([Item(s.rules[0], head = s.nt, pos = 0)]))
+		print x
+		print self.GOTO(x, g.sym['TOK_MARK_LPAREN'])
 	def closure(self, I):
 		J = set(I) # copy it
 		fixpoint = False
@@ -88,6 +89,20 @@ class LRGen(object):
 					fixpoint = False
 					J.add(i)
 		return J
+
+	def GOTO(self, I, t):
+		assert(isinstance(t, Terminal))
+
+		s = set()
+		for i in I:
+			try:
+				x = i[i.pos]
+			except IndexError:
+				continue
+			if x == t:
+				s.add(Item(i, head = i.head, pos = i.pos + 1))
+
+		return self.closure(s)
 
 	def construct_items(self):
 		print 'Constructing items'
