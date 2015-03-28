@@ -79,7 +79,10 @@ class LRGen(object):
 	def number_states(self, C):
 		numbering = {}
 		for i, I in enumerate(C):
+			print i, I
 			numbering[I] = i
+		print
+		print
 		return numbering
 
 	def start_item(self):
@@ -162,6 +165,7 @@ class LRGen(object):
 				try:
 					nxt = i[i.pos]
 				except IndexError:
+					print i, self.g.FOLLOW[i.head.name]
 					if len(i) == 1 and i[0] is SymEpsilon():
 						continue
 					if i.head is SymStart():
@@ -197,7 +201,7 @@ class LRGen(object):
 		goto = {}
 		for (I, inum) in self.numbering.items():
 			for t in self.g.reachables():
-				if not isinstance(t, Terminal):
+				if not isinstance(t, NonTerminal):
 					continue
 				g = self.GOTO(I,t)
 				out = self.numbering.get(g, None)
@@ -256,6 +260,7 @@ class LRGen(object):
 		print >>f
 		print >>f, 'struct reduce_move {'
 		print >>f, '\tunsigned int len;'
+		print >>f, '\tint head;'
 		print >>f, '\tconst char *reduction;'
 		print >>f, '};'
 		print >>f
@@ -281,6 +286,7 @@ class LRGen(object):
 					' '.join(map(lambda x:x.name, v[1])))
 				print >>f, '\t\t.u.reduce = {'
 				print >>f, '\t\t\t.len = %d,'%l
+				print >>f, '\t\t\t.head = %s,'%v[0].cname()
 				print >>f, '\t\t\t.reduction = "%s",'%r
 				print >>f, '\t\t},'
 			print >>f, '\t},'
@@ -301,6 +307,9 @@ class LRGen(object):
 		f.write('\n')
 
 		self.write_sym_names(f)
+		f.write('\n')
+
+		f.write('#define INITIAL_STATE %d\n'%self.initial)
 		f.write('\n')
 
 		self.write_action_table(f)
