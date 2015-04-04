@@ -89,6 +89,10 @@ class LRGen(object):
 		s = self.g.p['S']
 		return Item(s.rules[0], head = s.nt, pos = 0)
 
+	def end_item(self):
+		s = self.g.p['S']
+		return Item(s.rules[0], head = s.nt, pos = 1)
+
 	def initial_state(self):
 		s = self.start_item()
 		for (I, inum) in self.numbering.items():
@@ -153,7 +157,7 @@ class LRGen(object):
 		action = {}
 
 		for (I, inum) in self.numbering.items():
-			if self.start_item() in I:
+			if self.end_item() in I:
 				key = (inum, SymEof())
 				val = ('accept', True)
 				if action.has_key(key):
