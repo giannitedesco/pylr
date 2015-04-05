@@ -5,17 +5,23 @@ from grammar import Grammar
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
 	def __new__(cls, arg = [], **kwargs):
-		if arg and arg[-1] is SymEof():
-			arg = arg[:-1]
+		if arg:
+			if arg[-1] is SymEof():
+				arg = arg[:-1]
+			elif len(arg) == 1 and arg[0] == SymEpsilon():
+				arg = []
 		return super(Item, cls).__new__(cls, arg)
 	def __init__(self, arg = [], **kwargs):
 		self.head = kwargs.pop('head')
 		self.pos = int(kwargs.pop('pos'))
-		if arg and arg[-1] is SymEof():
-			arg = arg[:-1]
+		if arg:
+			if arg[-1] is SymEof():
+				arg = arg[:-1]
+			elif len(arg) == 1 and arg[0] == SymEpsilon():
+				arg = []
 		super(Item, self).__init__(arg, **kwargs)
 		assert(self.pos >= 0)
-		assert(self.pos <= len(self))
+		assert(not arg or self.pos <= len(self))
 	def __str__(self):
 		def f((i, x)):
 			if i == self.pos:
@@ -84,6 +90,8 @@ class LRGen(object):
 	def number_states(self, C):
 		numbering = {}
 		for i, I in enumerate(C):
+			#print i, I
+			#print
 			numbering[I] = i
 		return numbering
 
@@ -162,7 +170,7 @@ class LRGen(object):
 			try:
 				old = action[key]
 			except:
-				action[key] = val
+				action[key] = new
 				return
 
 			if old == new:
@@ -173,8 +181,12 @@ class LRGen(object):
 			print new
 			if old[0] == 'accept':
 				action[key] = new
+			elif new[0] == 'accept':
+				pass
 			elif old[0] == 'reduce' and new[0] == 'shift':
 				action[key] = new
+			elif old[0] == 'shift' and new[0] == 'reduce':
+				pass
 			else:
 				print 'unable to resolve'
 				raise Exception('action table conflict')

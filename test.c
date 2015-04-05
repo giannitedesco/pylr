@@ -10,6 +10,12 @@
 #include "lex.h"
 #include "grammar.h"
 
+#if 0
+#define dprintf(...) printf(__VA_ARGS__)
+#else
+#define dprintf(x...) do { } while(0);
+#endif
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 #endif
@@ -50,8 +56,8 @@ static const int goto_lookup(unsigned int s, int A, unsigned int *res)
 
 	for(i = 0; i < ARRAY_SIZE(GOTO); i++) {
 		if ( GOTO[i].i == s && GOTO[i].A == A) {
-			//printf(" - GOTO[%u,%s] = %u\n",
-			//	s, sym_name(A), GOTO[i].j);
+			dprintf(" - GOTO[%u,%s] = %u\n",
+				s, sym_name(A), GOTO[i].j);
 			*res = GOTO[i].j;
 			return 1;
 		}
@@ -97,11 +103,11 @@ static int parser_token(struct _parser *p, tok_t tok)
 	unsigned int i, j;
 	unsigned int s;
 
-	printf("token: %s\n", sym_name(tok->t_type));
+	//printf("token: %s\n", sym_name(tok->t_type));
 
 again:
 	s = stack_top(p);
-	//printf("Lookup ACTION[%u,%s]\n", stack_top(p), sym_name(tok->t_type));
+	dprintf("Lookup ACTION[%u,%s]\n", stack_top(p), sym_name(tok->t_type));
 	a = action_lookup(stack_top(p), tok->t_type);
 	if ( NULL == a ) {
 		printf("Parse error\n");
@@ -110,28 +116,28 @@ again:
 
 	switch(a->action) {
 	case ACTION_ACCEPT:
-		//printf("accept\n");
+		dprintf("accept\n");
 		break;
 	case ACTION_SHIFT:
-		//printf("shift\n");
+		dprintf("shift\n");
 		stack_push(p, a->u.shift.t);
-		//printf(" - state now %u\n", stack_top(p));
+		dprintf(" - state now %u\n", stack_top(p));
 		if ( tok->t_type == SYM_EOF ) {
 			goto again;
 		}
 		break;
 	case ACTION_REDUCE:
-		//printf("reduce (len %u)\n", a->u.reduce.len);
+		dprintf("reduce (len %u)\n", a->u.reduce.len);
 		for(i = 0; i < a->u.reduce.len; i++) {
-			//printf(" - pop %u\n", stack_top(p));
+			dprintf(" - pop %u\n", stack_top(p));
 			stack_pop(p);
 		}
-		//printf(" - state now %u\n", stack_top(p));
+		dprintf(" - state now %u\n", stack_top(p));
 		if ( !goto_lookup(stack_top(p), a->u.reduce.head, &j) ) {
 			return 0;
 		}
 		stack_push(p, j);
-		//printf(" - state now %u\n", stack_top(p));
+		dprintf(" - state now %u\n", stack_top(p));
 		printf(" - reduce: %s\n", a->u.reduce.reduction);
 		goto again;
 	}
