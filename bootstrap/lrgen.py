@@ -158,14 +158,23 @@ class LRGen(object):
 
 		action = {}
 
+		def handle_conflict(key, val):
+			if action.has_key(key):
+				if val == action[key]:
+					return
+				print 'shift/reduce conflict'
+				print action[key]
+				print val
+				print
+				return
+
+			action[key] = val
+
 		for (I, inum) in self.numbering.items():
 			if self.end_item() in I:
 				key = (inum, SymEof())
 				val = ('accept', True)
-				if action.has_key(key):
-					assert(val == action[key])
-
-				action[key] = val
+				handle_conflict(key, val)
 
 			def do_reduce(i):
 				if len(i) == 1 and i[0] is SymEpsilon():
@@ -175,9 +184,7 @@ class LRGen(object):
 				for a in self.FOLLOW[i.head.name]:
 					key = (inum, a)
 					val = ('reduce', (i.head, tuple(i)))
-					if action.has_key(key):
-						assert(val == action[key])
-					action[key] = val
+					handle_conflict(key, val)
 
 			for i in I:
 				try:
@@ -193,10 +200,7 @@ class LRGen(object):
 				val = ('shift', val)
 				key = inum, nxt
 
-				if action.has_key(key):
-					assert(val == action[key])
-
-				action[key] = val
+				handle_conflict(key, val)
 
 		#for k, v in sorted(action.items()):
 		#	print k, '->', v
