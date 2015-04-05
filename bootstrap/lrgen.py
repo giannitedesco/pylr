@@ -158,17 +158,29 @@ class LRGen(object):
 
 		action = {}
 
-		def handle_conflict(key, val):
-			if action.has_key(key):
-				if val == action[key]:
-					return
-				print 'shift/reduce conflict'
-				print action[key]
-				print val
-				print
+		def handle_conflict(key, new):
+			try:
+				old = action[key]
+			except:
+				action[key] = val
 				return
 
-			action[key] = val
+			if old == new:
+				return
+
+			print 'shift/reduce conflict'
+			print old
+			print new
+			if old[0] == 'accept':
+				action[key] = new
+			elif old[0] == 'reduce' and new[0] == 'shift':
+				action[key] = new
+			else:
+				print 'unable to resolve'
+				raise Exception('action table conflict')
+			print
+			return
+
 
 		for (I, inum) in self.numbering.items():
 			if self.end_item() in I:
