@@ -35,10 +35,13 @@ class Item(tuple):
 		r = cmp(a.head, b.head)
 		if r:
 			return r
+		r = cmp(a.pos, b.pos)
+		if r:
+			return r
 		r = cmp(tuple(a), tuple(b))
 		if r:
 			return r
-		return cmp(a.pos, b.pos)
+		return 0
 	def __eq__(a, b):
 		return (a.__cmp(b) == 0)
 	def __neq__(a, b):
@@ -59,18 +62,20 @@ class Item(tuple):
 class LRGen(object):
 	def __init__(self, g, start):
 		super(LRGen, self).__init__()
-		self.g = g
-		self.start = g[start]
-		if not isinstance(self.g, Grammar):
+		if not isinstance(g, Grammar):
 			raise TypeError
+
+		self.start = g[start]
 		if not isinstance(self.start, NonTerminal):
 			raise TypeError
 
+
+		self.p = g.p
+		g.construct_FOLLOW()
+		self.FOLLOW = g.FOLLOW
+		self.reachables = list(g.reachables())
+
 		self.C = self.canonical_collection()
-
-		self.g.eliminate_left_recursion()
-		self.g.construct_FOLLOW()
-
 		self.numbering = self.number_states(self.C)
 		self.action = self.construct_action_table()
 		self.goto = self.construct_goto()
@@ -79,18 +84,15 @@ class LRGen(object):
 	def number_states(self, C):
 		numbering = {}
 		for i, I in enumerate(C):
-			print i, I
 			numbering[I] = i
-		print
-		print
 		return numbering
 
 	def start_item(self):
-		s = self.g.p['S']
+		s = self.p['S']
 		return Item(s.rules[0], head = s.nt, pos = 0)
 
 	def end_item(self):
-		s = self.g.p['S']
+		s = self.p['S']
 		return Item(s.rules[0], head = s.nt, pos = 1)
 
 	def initial_state(self):
@@ -111,7 +113,7 @@ class LRGen(object):
 					continue
 				if not isinstance(B, NonTerminal):
 					continue
-				for r in self.g.p[B.name]:
+				for r in self.p[B.name]:
 					i = Item(r, head = B, pos = 0)
 					if i in J:
 						continue
@@ -134,7 +136,7 @@ class LRGen(object):
 		return self.closure(s)
 
 	def canonical_collection(self):
-		print 'construct canonical LR(0) collection'
+		print 'Construct canonical LR(0) collection'
 		C = set()
 
 		C.add(self.closure(frozenset([self.start_item()])))
@@ -144,7 +146,7 @@ class LRGen(object):
 			fixpoint = True
 
 			for I in list(C):
-				for X in self.g.reachables():
+				for X in self.reachables:
 					g = self.GOTO(I, X)
 					if g and g not in C:
 						C.add(g)
@@ -165,24 +167,27 @@ class LRGen(object):
 
 				action[key] = val
 
+			def do_reduce(i):
+				if len(i) == 1 and i[0] is SymEpsilon():
+					return
+				if i.head is SymStart():
+					return
+				for a in self.FOLLOW[i.head.name]:
+					key = (inum, a)
+					val = ('reduce', (i.head, tuple(i)))
+					if action.has_key(key):
+						assert(val == action[key])
+					action[key] = val
+
 			for i in I:
 				try:
 					nxt = i[i.pos]
 				except IndexError:
-					print i, self.g.FOLLOW[i.head.name]
-					if len(i) == 1 and i[0] is SymEpsilon():
-						continue
-					if i.head is SymStart():
-						continue
-					for a in self.g.FOLLOW[i.head.name]:
-						key = (inum, a)
-						val = ('reduce', (i.head, tuple(i)))
-						if action.has_key(key):
-							assert(val == action[key])
-						action[key] = val
+					do_reduce(i)
 					continue
 				g = self.GOTO(I, nxt)
 				val = self.numbering.get(g, None)
+				assert(val is not None)
 				if val is None:
 					continue
 				val = ('shift', val)
@@ -204,7 +209,7 @@ class LRGen(object):
 
 		goto = {}
 		for (I, inum) in self.numbering.items():
-			for t in self.g.reachables():
+			for t in self.reachables:
 				if not isinstance(t, NonTerminal):
 					continue
 				g = self.GOTO(I,t)
@@ -221,7 +226,7 @@ class LRGen(object):
 	def write_sym_defs(self, f):
 		f.write('#define SYM_EOF %d\n'%SymEof().val)
 		f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
-		for nt in sorted(self.g.sym.values()):
+		for nt in sorted(self.reachables):
 			if not isinstance(nt, NonTerminal):
 				continue
 			f.write('#define %s %d\n'%(nt.cname(), nt.val))
@@ -230,13 +235,11 @@ class LRGen(object):
 		f.write('static inline const char *sym_name(int sym)\n')
 		f.write('{\n')
 		f.write('\tswitch(sym) {\n')
-		for nt in sorted(self.g.sym.values()):
+		for nt in sorted(self.reachables):
 			f.write('\tcase %s:\n'%(nt.cname()))
 			f.write('\t\treturn "%s";\n'%(nt.name))
-		f.write('\tcase SYM_EOF:\n')
-		f.write('\t\treturn "EOF";\n')
-		f.write('\tcase SYM_EPSILON:\n')
-		f.write('\t\treturn "EPSILON";\n')
+		#f.write('\tcase SYM_EPSILON:\n')
+		#f.write('\t\treturn "EPSILON";\n')
 		f.write('\tdefault:\n')
 		f.write('\t\treturn "<<UNKNOWN>>";\n')
 		f.write('\t}\n')

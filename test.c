@@ -36,8 +36,9 @@ static const struct action *action_lookup(unsigned int s,
 	unsigned int i;
 
 	for(i = 0; i < ARRAY_SIZE(ACTION); i++) {
-		if ( ACTION[i].i == s && ACTION[i].a == a)
+		if ( ACTION[i].i == s && ACTION[i].a == a) {
 			return &ACTION[i];
+		}
 	}
 
 	return NULL;
@@ -48,8 +49,11 @@ static const unsigned int goto_lookup(unsigned int s, int A)
 	unsigned int i;
 
 	for(i = 0; i < ARRAY_SIZE(GOTO); i++) {
-		if ( GOTO[i].i == s && GOTO[i].A == A)
+		if ( GOTO[i].i == s && GOTO[i].A == A) {
+			printf(" - GOTO[%u,%s] = %u\n",
+				s, sym_name(A), GOTO[i].j);
 			return GOTO[i].j;
+		}
 	}
 
 	abort();
@@ -86,6 +90,62 @@ static unsigned int stack_top(struct _parser *p)
 	return p->stack[p->stack_top - 1];
 }
 
+static int parser_token(struct _parser *p, tok_t tok)
+{
+	const struct action *a;
+	unsigned int i;
+	unsigned int s;
+
+	printf("token: %s\n", sym_name(tok->t_type));
+
+again:
+	s = stack_top(p);
+	printf("Lookup ACTION[%u,%s]\n", stack_top(p), sym_name(tok->t_type));
+	a = action_lookup(stack_top(p), tok->t_type);
+	if ( NULL == a ) {
+		printf("Parse error\n");
+		return 0;
+	}
+
+	switch(a->action) {
+	case ACTION_ACCEPT:
+		printf("accept\n");
+		break;
+	case ACTION_SHIFT:
+		printf("shift\n");
+		stack_push(p, a->u.shift.t);
+		printf(" - state now %u\n", stack_top(p));
+		if ( tok->t_type == SYM_EOF ) {
+			printf("EOF YO\n");
+			goto again;
+		}
+		break;
+	case ACTION_REDUCE:
+		printf("reduce (len %u)\n", a->u.reduce.len);
+		for(i = 0; i < a->u.reduce.len; i++) {
+			printf(" - pop %u\n", stack_pop(p));
+		}
+		printf(" - state now %u\n", stack_top(p));
+		stack_push(p, goto_lookup(stack_top(p), a->u.reduce.head));
+		printf(" - state now %u\n", stack_top(p));
+		printf(" - output: %s\n", a->u.reduce.reduction);
+		goto again;
+	}
+	printf("\n");
+	return 1;
+}
+
+static int parser_eof(struct _parser *p)
+{
+	struct _tok tok;
+
+	tok.t_type = SYM_EOF;
+
+	if ( !parser_token(p, &tok) ) {
+		return 0;
+	}
+}
+
 static struct _parser *parser_new(void)
 {
 	struct _parser *p;
@@ -112,39 +172,8 @@ out:
 static int tok_cb(tok_t tok, void *priv)
 {
 	struct _parser *p = priv;
-	const struct action *a;
-	unsigned int i;
-	unsigned int s;
 
-	printf("token: %s\n", sym_name(tok->t_type));
-
-again:
-	s = stack_top(p);
-	printf("Lookup %u %s\n", stack_top(p), sym_name(tok->t_type));
-	a = action_lookup(stack_top(p), tok->t_type);
-
-	switch(a->action) {
-	case ACTION_ACCEPT:
-		printf("accept\n");
-		break;
-	case ACTION_SHIFT:
-		printf("shift\n");
-		stack_push(p, a->u.shift.t);
-		printf(" - state now %u\n", stack_top(p));
-		break;
-	case ACTION_REDUCE:
-		printf("reduce (len %u)\n", a->u.reduce.len);
-		for(i = 0; i < a->u.reduce.len; i++) {
-			printf(" - pop %u\n", stack_pop(p));
-		}
-		printf("%u %s\n", stack_top(p), sym_name(a->u.reduce.head));
-		stack_push(p, goto_lookup(stack_top(p), a->u.reduce.head));
-		printf(" - state now %u\n", stack_top(p));
-		printf(" - output: %s\n", a->u.reduce.reduction);
-		goto again;
-	}
-	printf("\n");
-	return 1;
+	return parser_token(priv, tok);
 }
 
 static int lex_file(const char *fn)
@@ -178,8 +207,8 @@ static int lex_file(const char *fn)
 		}
 	}
 
-	if ( ferror(f) || !lexer_eof(lex) ) {
-		fprintf(stderr, "lex: %s: %s\n", fn, strerror(errno));
+	if ( ferror(f) || !lexer_eof(lex) || !parser_eof(p) ) {
+		fprintf(stderr, "parse: %s: %s\n", fn, strerror(errno));
 		goto out_close;
 	}
 
@@ -203,7 +232,7 @@ int main(int argc, char **argv)
 	printf("Start:\n\n");
 	for(i = 1; i < argc; i++) {
 		if ( !lex_file(argv[i]) )
-			printf("%s: fucked\n", argv[i]);
+			printf("%s: parse: fucked\n", argv[i]);
 	}
 	return 0;
 }
