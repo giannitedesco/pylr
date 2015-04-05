@@ -691,6 +691,8 @@ class Grammar(object):
 			for r in p:
 				start = r[0]
 				if isinstance(start, NonTerminal):
+					if start == nt:
+						continue
 					tmp = do_FIRST(start, f)
 				else:
 					tmp = set([start])
