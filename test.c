@@ -102,12 +102,10 @@ static int parser_token(struct _parser *p, tok_t tok)
 	const struct production *prod;
 	const struct action *a;
 	unsigned int i, j;
-	unsigned int s;
 
 	printf("token: %s\n", sym_name(tok->t_type));
 
 again:
-	s = stack_top(p);
 	dprintf("Lookup ACTION[%u,%s]\n", stack_top(p), sym_name(tok->t_type));
 	a = action_lookup(stack_top(p), tok->t_type);
 	if ( NULL == a ) {
@@ -156,6 +154,8 @@ static int parser_eof(struct _parser *p)
 	if ( !parser_token(p, &tok) ) {
 		return 0;
 	}
+
+	return 1;
 }
 
 static struct _parser *parser_new(void)
@@ -184,8 +184,7 @@ out:
 static int tok_cb(tok_t tok, void *priv)
 {
 	struct _parser *p = priv;
-
-	return parser_token(priv, tok);
+	return parser_token(p, tok);
 }
 
 static int lex_file(const char *fn)
@@ -219,8 +218,12 @@ static int lex_file(const char *fn)
 		}
 	}
 
-	if ( ferror(f) || !lexer_eof(lex) || !parser_eof(p) ) {
+	if ( ferror(f) ) {
 		fprintf(stderr, "parse: %s: %s\n", fn, strerror(errno));
+		goto out_close;
+	}
+	if ( !lexer_eof(lex) || !parser_eof(p) ) {
+		fprintf(stderr, "parse: %s: parse/lex error\n", fn);
 		goto out_close;
 	}
 
