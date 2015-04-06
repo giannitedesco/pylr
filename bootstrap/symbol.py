@@ -17,7 +17,7 @@ class Sym(object):
 	def __cmp__(a, b):
 		if not isinstance(b, Sym):
 			raise TypeError
-		return a.val.__cmp__(b.val)
+		return cmp(a.val, b.val)
 	def cname(self):
 		return 'SYM_' + self.name
 
@@ -80,7 +80,7 @@ class NonTerminal(Sym):
 	def __cmp__(a, b):
 		if not isinstance(b, Sym):
 			raise TypeError
-		return a.val.__cmp__(b.val)
+		return cmp(a.val, b.val)
 
 
 class SymStart(NonTerminal):
