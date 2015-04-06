@@ -99,11 +99,12 @@ static unsigned int stack_top(struct _parser *p)
 
 static int parser_token(struct _parser *p, tok_t tok)
 {
+	const struct production *prod;
 	const struct action *a;
 	unsigned int i, j;
 	unsigned int s;
 
-	//printf("token: %s\n", sym_name(tok->t_type));
+	printf("token: %s\n", sym_name(tok->t_type));
 
 again:
 	s = stack_top(p);
@@ -127,18 +128,19 @@ again:
 		}
 		break;
 	case ACTION_REDUCE:
-		dprintf("reduce (len %u)\n", a->u.reduce.len);
-		for(i = 0; i < a->u.reduce.len; i++) {
+		prod = &productions[a->u.reduce.index];
+		printf(" - reduce: %s\n", prod->action);
+		dprintf("reduce (len %u)\n", prod->len);
+		for(i = 0; i < prod->len; i++) {
 			dprintf(" - pop %u\n", stack_top(p));
 			stack_pop(p);
 		}
 		dprintf(" - state now %u\n", stack_top(p));
-		if ( !goto_lookup(stack_top(p), a->u.reduce.head, &j) ) {
+		if ( !goto_lookup(stack_top(p), prod->head, &j) ) {
 			return 0;
 		}
 		stack_push(p, j);
 		dprintf(" - state now %u\n", stack_top(p));
-		printf(" - reduce: %s\n", a->u.reduce.reduction);
 		goto again;
 	}
 	printf("\n");

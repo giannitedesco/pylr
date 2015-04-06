@@ -81,19 +81,20 @@ class LRGen(object):
 		self.FOLLOW = g.FOLLOW
 		self.reachables = list(g.reachables())
 
+		self.productions = {}
 		self.C = self.canonical_collection()
-		self.numbering = self.number_states(self.C)
+		self.state_number = self.number_states(self.C)
 		self.action = self.construct_action_table()
 		self.goto = self.construct_goto()
 		self.initial = self.initial_state()
 
 	def number_states(self, C):
-		numbering = {}
+		state_number = {}
 		for i, I in enumerate(C):
 			#print i, I
 			#print
-			numbering[I] = i
-		return numbering
+			state_number[I] = i
+		return state_number
 
 	def start_item(self):
 		s = self.p['S']
@@ -105,7 +106,7 @@ class LRGen(object):
 
 	def initial_state(self):
 		s = self.start_item()
-		for (I, inum) in self.numbering.items():
+		for (I, inum) in self.state_number.items():
 			if s in I:
 				return inum
 
@@ -193,22 +194,38 @@ class LRGen(object):
 			print
 			return
 
+		def prod_name(r):
+			t = map(lambda x:x.name.lower(), r)
+			if not t:
+				t = ('epsilon',)
+			return 'p_%s__%s'%(r.head.name.lower(), '_'.join(t))
 
-		for (I, inum) in self.numbering.items():
+		def do_reduce(r):
+			if len(r) == 1 and r[0] is SymEpsilon():
+				return
+			if r.head is SymStart():
+				return
+
+			n = prod_name(r)
+			try:
+				index = self.productions[n]
+			except KeyError:
+				index = len(self.productions)
+				plen = len(r)
+				head = r.head
+				p = (index, plen, head)
+				self.productions[n] = p
+
+			for a in self.FOLLOW[r.head.name]:
+				key = (inum, a)
+				val = ('reduce', (index, r))
+				handle_conflict(key, val)
+
+		for (I, inum) in self.state_number.items():
 			if self.end_item() in I:
 				key = (inum, SymEof())
 				val = ('accept', True)
 				handle_conflict(key, val)
-
-			def do_reduce(i):
-				if len(i) == 1 and i[0] is SymEpsilon():
-					return
-				if i.head is SymStart():
-					return
-				for a in self.FOLLOW[i.head.name]:
-					key = (inum, a)
-					val = ('reduce', (i.head, tuple(i)))
-					handle_conflict(key, val)
 
 			for i in I:
 				try:
@@ -217,7 +234,7 @@ class LRGen(object):
 					do_reduce(i)
 					continue
 				g = self.GOTO(I, nxt)
-				val = self.numbering.get(g, None)
+				val = self.state_number.get(g, None)
 				assert(val is not None)
 				if val is None:
 					continue
@@ -236,12 +253,12 @@ class LRGen(object):
 		print 'Construct goto table...'
 
 		goto = {}
-		for (I, inum) in self.numbering.items():
+		for (I, inum) in self.state_number.items():
 			for t in self.reachables:
 				if not isinstance(t, NonTerminal):
 					continue
 				g = self.GOTO(I,t)
-				out = self.numbering.get(g, None)
+				out = self.state_number.get(g, None)
 				if out is None:
 					continue
 				key = (inum, t)
@@ -283,6 +300,22 @@ class LRGen(object):
 			print >> f, '\t{ %d, %s, %d },'%(i, A.cname(), j)
 		print >>f, '};'
 
+	def write_production_table(self, f):
+		print >>f, 'static const struct production {'
+		print >>f, '\tconst char *action;'
+		print >>f, '\tunsigned int len;'
+		print >>f, '\tint head;'
+		print >>f, '}productions[] = {'
+		for v, k in sorted([(v, k) for (k, v) in \
+					self.productions.items()]):
+			(index, plen, head) = v
+			print >>f, '\t{'
+			print >>f, '\t\t.action = \"%s\",'%k
+			print >>f, '\t\t.len = %d,'%plen
+			print >>f, '\t\t.head = %s,'%head.cname()
+			print >>f, '\t},'
+		print >>f, '};'
+
 	def write_action_table(self, f):
 		print >>f, '#define ACTION_ERROR\t0'
 		print >>f, '#define ACTION_ACCEPT\t1'
@@ -294,9 +327,7 @@ class LRGen(object):
 		print >>f, '};'
 		print >>f
 		print >>f, 'struct reduce_move {'
-		print >>f, '\tunsigned int len;'
-		print >>f, '\tint head;'
-		print >>f, '\tconst char *reduction;'
+		print >>f, '\tunsigned int index;'
 		print >>f, '};'
 		print >>f
 		print >>f, 'static const struct action {'
@@ -316,13 +347,9 @@ class LRGen(object):
 			if c == 'shift':
 				print >>f, '\t\t.u.shift = { .t = %d },'%v
 			elif c == 'reduce':
-				l = len(v[1])
-				r = '%s -> %s'%(v[0].name,
-					' '.join(map(lambda x:x.name, v[1])))
+				index, r = v
 				print >>f, '\t\t.u.reduce = {'
-				print >>f, '\t\t\t.len = %d,'%l
-				print >>f, '\t\t\t.head = %s,'%v[0].cname()
-				print >>f, '\t\t\t.reduction = "%s",'%r
+				print >>f, '\t\t\t.index = %d,'%index
 				print >>f, '\t\t},'
 			print >>f, '\t},'
 		print >>f, '};'
@@ -347,6 +374,7 @@ class LRGen(object):
 		f.write('#define INITIAL_STATE %d\n'%self.initial)
 		f.write('\n')
 
+		self.write_production_table(f)
 		self.write_action_table(f)
 		f.write('\n')
 
