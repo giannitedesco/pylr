@@ -170,7 +170,7 @@ class LRGen(object):
 		def handle_conflict(key, new):
 			try:
 				old = action[key]
-			except:
+			except KeyError:
 				action[key] = new
 				return
 
@@ -191,8 +191,6 @@ class LRGen(object):
 			else:
 				print 'unable to resolve'
 				raise Exception('action table conflict')
-			print
-			return
 
 		def prod_name(r):
 			t = map(lambda x:x.name.lower(), r)
@@ -210,7 +208,7 @@ class LRGen(object):
 
 			n = prod_name(r)
 			try:
-				index = self.productions[n]
+				index = self.productions[n][0]
 			except KeyError:
 				index = len(self.productions)
 				plen = len(r)
