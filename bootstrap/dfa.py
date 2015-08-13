@@ -1,6 +1,7 @@
 from ast import AstLiteral
 from graph import Graph
 from c import CFile, HFile
+from os.path import join
 
 class Block(frozenset):
 	def __init__(self, *args, **kwargs):
@@ -280,7 +281,7 @@ class DFA(object):
 
 		cfn = base_name + '.c'
 		hfn = base_name + '.h'
-		c = CFile(cfn, incl = [hfn], srcdir = srcdir)
+		c = CFile(cfn, incl = [join(includedir, hfn)], srcdir = srcdir)
 		c.state_type(self.num_states)
 		if table:
 			c.transition_table(self)
