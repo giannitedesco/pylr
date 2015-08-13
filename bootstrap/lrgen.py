@@ -198,7 +198,9 @@ class LRGen(object):
 			t = map(lambda x:x.name.lower(), r)
 			if not t:
 				t = ('epsilon',)
-			return 'p_%s__%s'%(r.head.name.lower(), '_'.join(t))
+			return '%s -> %s'%(\
+					','.join(t),
+					r.head.name.lower())
 
 		def do_reduce(r):
 			if len(r) == 1 and r[0] is SymEpsilon():
