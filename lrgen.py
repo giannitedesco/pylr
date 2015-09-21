@@ -20,7 +20,10 @@ def read_terminals(fn):
 			if l == '};':
 				break
 			l = l.split(',', 1)
-			yield Terminal(l[0].strip())
+			l = l[0].strip().split('=')
+			l = l[0].strip()
+			if l != 'TOK_EOF':
+				yield Terminal(l)
 
 def parse_bnf(fn, tbl = {}):
 	for p in parse(fn, break_terminals=False):
@@ -60,6 +63,11 @@ def main(argv):
 				type = str,
 				default = [],
 				help = 'Read token terminals')
+	opts.add_argument('--language',
+				metavar = 'output-language',
+				default = 'C',
+				type = str,
+				help = 'Set the output language')
 
 	args = opts.parse_args()
 
@@ -89,7 +97,9 @@ def main(argv):
 	#g.dump()
 
 	p = LRGen(g, 'S')
-	p.write_tables(args.base_name, path=args.includedir)
+	p.write_tables(args.base_name,
+			path = args.includedir,
+			language = args.language)
 
 	return EXIT_SUCCESS
 

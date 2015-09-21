@@ -10,7 +10,7 @@
 #include "lex.h"
 #include "grammar.h"
 
-#if 0
+#if 1
 #define dprintf(...) printf(__VA_ARGS__)
 #else
 #define dprintf(x...) do { } while(0);
@@ -127,7 +127,7 @@ again:
 		break;
 	case ACTION_REDUCE:
 		prod = &productions[a->u.reduce.index];
-		printf(" - reduce: %s\n", prod->action);
+		printf(" - reduce: %u\n", prod->action);
 		dprintf("reduce (len %u)\n", prod->len);
 		for(i = 0; i < prod->len; i++) {
 			dprintf(" - pop %u\n", stack_top(p));

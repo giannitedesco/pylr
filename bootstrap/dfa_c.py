@@ -25,7 +25,7 @@ class HFile(file):
 
 	def token_enum(self, dfa):
 		self.write('enum tok {\n')
-		self.write('\tTOK_EOF = - 1, /* force signed enum */\n')
+		self.write('\tTOK_EOF = -1, /* force signed enum */\n')
 		self.write('\tTOK_UNKNOWN,\n')
 		s = set()
 		for v in dfa.final.values():
