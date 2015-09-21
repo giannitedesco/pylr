@@ -1,6 +1,17 @@
 from symbol import *
 from grammar import Grammar
 
+def large_enough_type(x):
+	if x <= 0xff:
+		return 'uint8_t'
+	elif x < 0xffff:
+		return 'uint16_t'
+	elif x < 0xffffffff:
+		return 'uint32_t'
+	else:
+		return 'uint64_t'
+
+
 # This should be the rule class, remove pos
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
@@ -196,9 +207,13 @@ class LRGen(object):
 			t = map(lambda x:x.name.lower(), r)
 			if not t:
 				t = ('epsilon',)
-			return '%s -> %s'%(\
-					','.join(t),
-					r.head.name.lower())
+
+			t = r.head.name.upper()
+			f = map(lambda x:x.name.upper(), r)
+			if not f:
+				f = ('EPSILON',)
+
+			return '%s__FROM__%s'%(t, '_'.join(f))
 
 		def do_reduce(r):
 			if len(r) == 1 and r[0] is SymEpsilon():
@@ -300,17 +315,28 @@ class LRGen(object):
 			print >> f, '\t{ %d, %s, %d },'%(i, A.cname(), j)
 		print >>f, '};'
 
+	def write_productions_enum(self, f):
+		print >>f, 'enum production_idx {'
+		for k in sorted(self.productions.keys()):
+			print >>f, "\t%s,"%k
+		print >>f, '\tNR_PRODUCTIONS,'
+		print >>f, "};"
+
+		t = large_enough_type(len(self.productions.keys()))
+		print >>f
+		print >>f, 'typedef %s production_idx_t;'%t
+
 	def write_production_table(self, f):
 		print >>f, 'static const struct production {'
-		print >>f, '\tconst char *action;'
 		print >>f, '\tunsigned int len;'
 		print >>f, '\tint head;'
+		print >>f, '\tproduction_idx_t action;'
 		print >>f, '}productions[] = {'
 		for v, k in sorted([(v, k) for (k, v) in \
 					self.productions.items()]):
 			(index, plen, head) = v
 			print >>f, '\t{'
-			print >>f, '\t\t.action = \"%s\",'%k
+			print >>f, '\t\t.action = %s,'%k
 			print >>f, '\t\t.len = %d,'%plen
 			print >>f, '\t\t.head = %s,'%head.cname()
 			print >>f, '\t},'
@@ -372,6 +398,9 @@ class LRGen(object):
 		f.write('\n')
 
 		f.write('#define INITIAL_STATE %d\n'%self.initial)
+		f.write('\n')
+
+		self.write_productions_enum(f)
 		f.write('\n')
 
 		self.write_production_table(f)
