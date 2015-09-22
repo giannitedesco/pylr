@@ -75,6 +75,11 @@ if __name__ == '__main__':
 				default = 'lex',
 				type = str,
 				help = 'Set the output filename')
+	opts.add_argument('--language',
+				metavar = 'output-language',
+				default = 'C',
+				type = str,
+				help = 'Set the output language')
 
 	args = opts.parse_args()
 
@@ -95,8 +100,9 @@ if __name__ == '__main__':
 	if not args.no_optimize and args.dump_graph:
 		dfa.dump_graph('optimized.dot')
 
-	dfa.dump_c(base_name = args.base_name,
+	dfa.write(base_name = args.base_name,
 			srcdir = args.srcdir,
-			includedir = args.includedir)
+			includedir = args.includedir,
+			language = args.language)
 
 	raise SystemExit, 0

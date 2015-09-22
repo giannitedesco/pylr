@@ -400,3 +400,19 @@ void lexer_free(lexer_t l)
 	}
 }
 ''')
+
+def dfa_c(dfa, base_name, srcdir, includedir, table):
+	cfn = base_name + '.c'
+	hfn = base_name + '.h'
+	c = CFile(cfn, incl = [join(includedir, hfn)], srcdir = srcdir)
+	c.state_type(dfa.num_states)
+	if table:
+		c.transition_table(dfa)
+	else:
+		c.transition_func(dfa)
+	c.accept_table(dfa)
+	c.boilerplate(dfa)
+
+	h = HFile(hfn, includedir = includedir)
+	h.token_enum(dfa)
+	h.decls()

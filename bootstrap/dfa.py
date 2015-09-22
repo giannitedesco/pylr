@@ -3,6 +3,9 @@ from graph import Graph
 from c import CFile, HFile
 from os.path import join
 
+from dfa_c import dfa_c
+from dfa_py import dfa_py
+
 class Block(frozenset):
 	def __init__(self, *args, **kwargs):
 		super(Block, self).__init__(*args, **kwargs)
@@ -276,20 +279,12 @@ class DFA(object):
 			for sym, post in sorted(d.items()):
 				g.add_edge(pre + 1, post + 1, sym)
 
-	def dump_c(self, base_name = 'lex', srcdir = '.',
-				includedir = '.', table = True):
-
-		cfn = base_name + '.c'
-		hfn = base_name + '.h'
-		c = CFile(cfn, incl = [join(includedir, hfn)], srcdir = srcdir)
-		c.state_type(self.num_states)
-		if table:
-			c.transition_table(self)
-		else:
-			c.transition_func(self)
-		c.accept_table(self)
-		c.boilerplate(self)
-
-		h = HFile(hfn, includedir = includedir)
-		h.token_enum(self)
-		h.decls()
+	def write(self, base_name = 'lex', srcdir = '.',
+				includedir = '.', table = True, language = 'C'):
+		fns = {
+			'C':dfa_c,
+			'py':dfa_py,
+			'py2':dfa_py,
+			'python':dfa_py,
+			}
+		fns[language](self, base_name, srcdir, includedir, table)
