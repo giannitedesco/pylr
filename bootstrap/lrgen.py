@@ -3,13 +3,15 @@ from grammar import Grammar
 from lrgen_c import lrgen_c
 from lrgen_py import lrgen_py
 
+class kernel(frozenset):
+	def __init__(self, s):
+		k = filter(lambda x:x.is_kernel(), s)
+		return super(kernel, self).__init__(self, k)
+
 class kernelset(frozenset):
 	def __init__(self, sets):
-		C = set()
-		for s in sets:
-			kernels = frozenset(filter(lambda x:x.is_kernel(), s))
-			C.add(kernels)
-		return super(kernelset, self).__init__(self, C)
+		ks = map(kernel, sets)
+		return super(kernelset, self).__init__(self, ks)
 
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
@@ -127,40 +129,43 @@ class LRGen(object):
 		self.FIRST = g.FIRST
 		self.FOLLOW = g.FOLLOW
 		self.reachables = list(g.reachables())
-
 		self.productions = {}
-		self.C = self.canonical_collection()
-		self.K = kernelset(self.C)
 
-		for K in self.K:
-			self.generate_lookaheads(K)
+		print 'Construct canonical LR(0) collection'
+		self.C = self.canonical_collection()
+		print len(self.C), 'sets'
+
+		#print 'Pruning non-kernel items'
+		#self.K = kernelset(self.C)
+
+		#print 'Generating LALR(1) kernels'
+		#for K in self.K:
+		#	print ' - do a set with', len(K), 'items'
+		#	self.generate_lookaheads(K)
 		# TODO: map kernel items to lookaheads
 		# TODO: repeat lookahead generation until fixpoint
 
 		# TODO: close each kernel using CLOSURE from LR(1) Fig 4.40
 		# TODO: LR(1) table entries using LR(1) algo 4.56
+		print 'Constructing parse tables'
 		self.state_number = self.number_states(self.C)
 		self.action = self.construct_action_table()
 		self.goto = self.construct_goto()
 		self.initial = self.initial_state()
 
 	def generate_lookaheads(self, K):
-		for k in K:
-			A = k.head
-			alpha = k.pre_position()
-			beta = k.post_position()
-
+		for j in self.lr1_closure(K):
 			# if ( [B -> g.Xd, a] is in J, and a is not # )
 			# conclude that lookahead a is generated spontaneously
 			# for item B -> gX.d in GOTO(I, X);
 			def gen_lookahead(j, X):
-				print 'Generate', j.lookahead
 				new = Item(j, head = j.head, pos = j.pos + 1)
 				item_set = self.GOTO(self.lr1_closure(K), X)
-				print j
-				print new
-				print item_set in self.C
-				print
+				#print 'Generate', j.lookahead
+				#print j
+				#print new
+				#print item_set in self.C
+				#print
 				assert(new.is_kernel())
 
 			# if ( [B -> g.Xd, #] is in J )
@@ -175,19 +180,14 @@ class LRGen(object):
 				#print
 				return
 
-			Ihash = Item(k, head = k.head, pos = k.pos)
-			J = self.lr1_closure(frozenset({Ihash}))
-			for j in J:
-				try:
-					X = j[j.pos]
-				except IndexError:
-					continue
-				if j.lookahead:
-					gen_lookahead(j, X)
-				else:
-					propagate_lookahead(j, X)
-			continue
-		return
+			try:
+				X = j[j.pos]
+			except IndexError:
+				continue
+			if j.lookahead:
+				gen_lookahead(j, X)
+			else:
+				propagate_lookahead(j, X)
 
 	def number_states(self, C):
 		state_number = {}
@@ -197,8 +197,7 @@ class LRGen(object):
 
 	def start_item(self):
 		s = self.p['S']
-		return Item(s.rules[0], head = s.nt, pos = 0,
-				lookahead = SymEof())
+		return Item(s.rules[0], head = s.nt, pos = 0)
 
 	def end_item(self):
 		s = self.p['S']
@@ -281,10 +280,9 @@ class LRGen(object):
 			if x == t:
 				s.add(Item(i, head = i.head, pos = i.pos + 1))
 
-		return self.lr1_closure(s)
+		return self.lr0_closure(s)
 
 	def canonical_collection(self):
-		print 'Construct canonical LR(0) collection'
 		C = set()
 
 		C.add(self.lr0_closure(frozenset([self.start_item()])))
@@ -294,13 +292,21 @@ class LRGen(object):
 			fixpoint = True
 
 			for I in list(C):
-				for X in self.reachables:
-					g = self.GOTO(I, X)
+				d = dict()
+				for i in I:
+					try:
+						x = i[i.pos]
+					except IndexError:
+						continue
+					new = Item(i, head = i.head,
+						pos = i.pos + 1)
+					d.setdefault(x, set()).add(new)
+
+				for g in map(self.lr0_closure, d.values()):
 					if g and g not in C:
 						C.add(g)
 						fixpoint = False
 
-		print 'Pruning non-kernel items'
 		return frozenset(C)
 
 	def construct_action_table(self):
