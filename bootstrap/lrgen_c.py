@@ -14,7 +14,7 @@ def large_enough_type(x):
 def write_sym_defs(lr, f):
 	f.write('#define SYM_EOF %d\n'%SymEof().val)
 	f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
-	for nt in sorted(lr.reachables):
+	for nt in sorted(lr.lang.reachables):
 		if not isinstance(nt, NonTerminal):
 			continue
 		f.write('#define %s %d\n'%(nt.cname(), nt.val))
@@ -23,7 +23,7 @@ def write_sym_names(lr, f):
 	f.write('static inline const char *sym_name(int sym)\n')
 	f.write('{\n')
 	f.write('\tswitch(sym) {\n')
-	for nt in sorted(lr.reachables):
+	for nt in sorted(lr.lang.reachables):
 		f.write('\tcase %s:\n'%(nt.cname()))
 		f.write('\t\treturn "%s";\n'%(nt.name))
 	#f.write('\tcase SYM_EPSILON:\n')

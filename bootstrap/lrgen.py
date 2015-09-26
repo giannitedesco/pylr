@@ -8,10 +8,217 @@ class kernel(frozenset):
 		k = filter(lambda x:x.is_kernel(), s)
 		return super(kernel, self).__init__(self, k)
 
-class kernelset(frozenset):
-	def __init__(self, sets):
-		ks = map(kernel, sets)
-		return super(kernelset, self).__init__(self, ks)
+class Language(object):
+	def __init__(self, g):
+		super(Language, self).__init__()
+		self.p = g.p
+		g.construct_FIRST()
+		g.construct_FOLLOW()
+		self.FIRST = g.FIRST
+		self.FOLLOW = g.FOLLOW
+		self.reachables = list(g.reachables())
+
+class Collection(object):
+	def __init__(self, lang):
+		super(Collection, self).__init__()
+		self.lang = lang
+		self.create_canonical_collection()
+		self.number_states(self.canonical)
+
+	def start_item(self):
+		s = self.lang.p['S']
+		return Item(s.rules[0], head = s.nt, pos = 0)
+
+	def end_item(self):
+		s = self.lang.p['S']
+		return Item(s.rules[0], head = s.nt, pos = 1)
+
+	def number_states(self, C):
+		self.state_number = {}
+		self.state = {}
+		c = {}
+		k = {}
+		for i, I in enumerate(C):
+			self.state_number[I] = i
+			self.state[i] = I
+			c[i] = I
+			k[i] = kernel(I)
+		self.canonical = c
+		self.kernels = c
+
+	def GOTO(self, I, t):
+		assert(isinstance(t, Sym))
+
+		s = set()
+		for i in I:
+			try:
+				x = i[i.pos]
+			except IndexError:
+				continue
+			if x == t:
+				s.add(Item(i, head = i.head, pos = i.pos + 1,
+						lookahead = i.lookahead))
+
+		return self.closure(s)
+
+class LR0(Collection):
+	def create_canonical_collection(self):
+		print 'Construct canonical %s collection'%\
+			self.__class__.__name__
+		C = set()
+		C.add(self.closure(frozenset([self.start_item()])))
+
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = True
+
+			for I in list(C):
+				d = dict()
+				for i in I:
+					try:
+						x = i[i.pos]
+					except IndexError:
+						continue
+					new = Item(i, head = i.head,
+						pos = i.pos + 1,
+						lookahead = i.lookahead)
+					d.setdefault(x, set()).add(new)
+
+				for g in map(self.closure, d.values()):
+					if g and g not in C:
+						C.add(g)
+						fixpoint = False
+
+		self.canonical = C
+
+	def reduce_symbols(self, item):
+		return self.lang.FOLLOW[item.head.name]
+
+	def __init__(self, lang):
+		super(LR0, self).__init__(lang)
+
+	def closure(self, I):
+		J = set(I) # copy it
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = True
+			for j in list(J):
+				try:
+					B = j[j.pos]
+				except IndexError:
+					continue
+				if not isinstance(B, NonTerminal):
+					continue
+				for r in self.lang.p[B.name]:
+					i = Item(r, head = B, pos = 0)
+					if i in J:
+						continue
+					fixpoint = False
+					J.add(i)
+		return frozenset(J)
+
+class LR1(LR0):
+	def __init__(self, lang):
+		super(LR1, self).__init__(lang)
+
+	def start_item(self):
+		s = self.lang.p['S']
+		return Item(s.rules[0], head = s.nt, pos = 0,
+				lookahead = SymEof())
+
+	def reduce_symbols(self, item):
+		return [item.lookahead]
+
+	def closure(self, I):
+		def do_round(J, j):
+			try:
+				B = j[j.pos]
+			except IndexError:
+				return False
+			if not isinstance(B, NonTerminal):
+				return False
+			for r in self.lang.p[B.name]:
+				try:
+					beta = j[j.pos + 1]
+				except IndexError:
+					beta = SymEpsilon()
+				if beta is not SymEpsilon():
+					if isinstance(beta, NonTerminal):
+						ff = self.lang.FIRST[beta.name]
+					else:
+						ff = [beta]
+				else:
+					ff = [j.lookahead]
+
+				for x in ff:
+					i = Item(r, head = B, pos = 0,
+						lookahead = x)
+					if i in J:
+						continue
+					J.add(i)
+					return True
+			return False
+
+		J = set(I) # copy it
+		fixpoint = False
+		while not fixpoint:
+			fixpoint = True
+			for j in list(J):
+				if do_round(J, j):
+					fixpoint = False
+		return frozenset(J)
+
+
+class LALR1(LR1):
+	def __init__(self, lang):
+		super(LALR1, self).__init__(lang)
+
+	def create_canonical_collection(self):
+		print 'Generating LALR(1) kernels'
+
+		self.lr0 = LR0(self.lang)
+		for K in self.lr0.kernels:
+			print ' - do a set with', len(K), 'items'
+			self.generate_lookaheads(K)
+
+		self.canonical = set()
+
+	def generate_lookaheads(self, K):
+		for j in self.closure(K):
+			# if ( [B -> g.Xd, a] is in J, and a is not # )
+			# conclude that lookahead a is generated spontaneously
+			# for item B -> gX.d in GOTO(I, X);
+			def gen_lookahead(j, X):
+				new = Item(j, head = j.head, pos = j.pos + 1)
+				item_set = self.GOTO(self.closure(K), X)
+				#print 'Generate', j.lookahead
+				#print j
+				#print new
+				#print item_set in self.C
+				#print
+				assert(new.is_kernel())
+
+			# if ( [B -> g.Xd, #] is in J )
+			# conclude that lookaheads propagate from A -> a.b in I
+			#	B -> gX.d in GOTO(I, X);
+			def propagate_lookahead(j, X):
+				new = Item(j, head = j.head, pos = j.pos + 1)
+				#print 'Propagate', k.lookahead
+				#print X
+				#print j
+				#print new
+				#print
+				return
+
+			try:
+				X = j[j.pos]
+			except IndexError:
+				continue
+			if j.lookahead:
+				gen_lookahead(j, X)
+			else:
+				propagate_lookahead(j, X)
+
 
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
@@ -123,191 +330,25 @@ class LRGen(object):
 		if not isinstance(self.start, NonTerminal):
 			raise TypeError
 
-		self.p = g.p
-		g.construct_FIRST()
-		g.construct_FOLLOW()
-		self.FIRST = g.FIRST
-		self.FOLLOW = g.FOLLOW
-		self.reachables = list(g.reachables())
+		self.lang = Language(g)
+		self.C = LR0(self.lang)
 		self.productions = {}
 
-		print 'Construct canonical LR(0) collection'
-		self.C = self.canonical_collection()
-		print len(self.C), 'sets'
-
-		#print 'Pruning non-kernel items'
-		#self.K = kernelset(self.C)
-
-		#print 'Generating LALR(1) kernels'
-		#for K in self.K:
-		#	print ' - do a set with', len(K), 'items'
-		#	self.generate_lookaheads(K)
 		# TODO: map kernel items to lookaheads
 		# TODO: repeat lookahead generation until fixpoint
 
 		# TODO: close each kernel using CLOSURE from LR(1) Fig 4.40
 		# TODO: LR(1) table entries using LR(1) algo 4.56
 		print 'Constructing parse tables'
-		self.state_number = self.number_states(self.C)
 		self.action = self.construct_action_table()
 		self.goto = self.construct_goto()
 		self.initial = self.initial_state()
 
-	def generate_lookaheads(self, K):
-		for j in self.lr1_closure(K):
-			# if ( [B -> g.Xd, a] is in J, and a is not # )
-			# conclude that lookahead a is generated spontaneously
-			# for item B -> gX.d in GOTO(I, X);
-			def gen_lookahead(j, X):
-				new = Item(j, head = j.head, pos = j.pos + 1)
-				item_set = self.GOTO(self.lr1_closure(K), X)
-				#print 'Generate', j.lookahead
-				#print j
-				#print new
-				#print item_set in self.C
-				#print
-				assert(new.is_kernel())
-
-			# if ( [B -> g.Xd, #] is in J )
-			# conclude that lookaheads propagate from A -> a.b in I
-			#	B -> gX.d in GOTO(I, X);
-			def propagate_lookahead(j, X):
-				new = Item(j, head = j.head, pos = j.pos + 1)
-				#print 'Propagate', k.lookahead
-				#print X
-				#print j
-				#print new
-				#print
-				return
-
-			try:
-				X = j[j.pos]
-			except IndexError:
-				continue
-			if j.lookahead:
-				gen_lookahead(j, X)
-			else:
-				propagate_lookahead(j, X)
-
-	def number_states(self, C):
-		state_number = {}
-		for i, I in enumerate(C):
-			state_number[I] = i
-		return state_number
-
-	def start_item(self):
-		s = self.p['S']
-		return Item(s.rules[0], head = s.nt, pos = 0)
-
-	def end_item(self):
-		s = self.p['S']
-		return Item(s.rules[0], head = s.nt, pos = 1)
-
 	def initial_state(self):
-		s = self.start_item()
-		for (I, inum) in self.state_number.items():
+		s = self.C.start_item()
+		for (I, inum) in self.C.state_number.items():
 			if s in I:
 				return inum
-
-	def lr0_closure(self, I):
-		J = set(I) # copy it
-		fixpoint = False
-		while not fixpoint:
-			fixpoint = True
-			for j in list(J):
-				try:
-					B = j[j.pos]
-				except IndexError:
-					continue
-				if not isinstance(B, NonTerminal):
-					continue
-				for r in self.p[B.name]:
-					i = Item(r, head = B, pos = 0)
-					if i in J:
-						continue
-					fixpoint = False
-					J.add(i)
-		return frozenset(J)
-
-	def lr1_closure(self, I):
-		def do_round(J, j):
-			try:
-				B = j[j.pos]
-			except IndexError:
-				return False
-			if not isinstance(B, NonTerminal):
-				return False
-			for r in self.p[B.name]:
-				try:
-					beta = j[j.pos + 1]
-				except IndexError:
-					beta = SymEpsilon()
-				if beta is not SymEpsilon():
-					if isinstance(beta, NonTerminal):
-						ff = self.FIRST[beta.name]
-					else:
-						ff = [beta]
-				else:
-					ff = [j.lookahead]
-
-				for x in ff:
-					i = Item(r, head = B, pos = 0,
-						lookahead = x)
-					if i in J:
-						continue
-					J.add(i)
-					return True
-			return False
-
-		J = set(I) # copy it
-		fixpoint = False
-		while not fixpoint:
-			fixpoint = True
-			for j in list(J):
-				if do_round(J, j):
-					fixpoint = False
-		return frozenset(J)
-
-	def GOTO(self, I, t):
-		assert(isinstance(t, Sym))
-
-		s = set()
-		for i in I:
-			try:
-				x = i[i.pos]
-			except IndexError:
-				continue
-			if x == t:
-				s.add(Item(i, head = i.head, pos = i.pos + 1))
-
-		return self.lr0_closure(s)
-
-	def canonical_collection(self):
-		C = set()
-
-		C.add(self.lr0_closure(frozenset([self.start_item()])))
-
-		fixpoint = False
-		while not fixpoint:
-			fixpoint = True
-
-			for I in list(C):
-				d = dict()
-				for i in I:
-					try:
-						x = i[i.pos]
-					except IndexError:
-						continue
-					new = Item(i, head = i.head,
-						pos = i.pos + 1)
-					d.setdefault(x, set()).add(new)
-
-				for g in map(self.lr0_closure, d.values()):
-					if g and g not in C:
-						C.add(g)
-						fixpoint = False
-
-		return frozenset(C)
 
 	def construct_action_table(self):
 		print 'Construct action table...'
@@ -367,13 +408,13 @@ class LRGen(object):
 				p = (index, plen, head)
 				self.productions[n] = p
 
-			for a in self.FOLLOW[r.head.name]:
+			for a in self.C.reduce_symbols(r):
 				key = (inum, a)
 				val = ('reduce', (index, r))
 				handle_conflict(key, val)
 
-		for (I, inum) in self.state_number.items():
-			if self.end_item() in I:
+		for (I, inum) in self.C.state_number.items():
+			if self.C.end_item() in I:
 				key = (inum, SymEof())
 				val = ('accept', True)
 				handle_conflict(key, val)
@@ -384,8 +425,8 @@ class LRGen(object):
 				except IndexError:
 					do_reduce(i)
 					continue
-				g = self.GOTO(I, nxt)
-				val = self.state_number.get(g, None)
+				g = self.C.GOTO(I, nxt)
+				val = self.C.state_number.get(g, None)
 				assert(val is not None)
 				if val is None:
 					continue
@@ -404,12 +445,12 @@ class LRGen(object):
 		print 'Construct goto table...'
 
 		goto = {}
-		for (I, inum) in self.state_number.items():
-			for t in self.reachables:
+		for (I, inum) in self.C.state_number.items():
+			for t in self.lang.reachables:
 				if not isinstance(t, NonTerminal):
 					continue
-				g = self.GOTO(I,t)
-				out = self.state_number.get(g, None)
+				g = self.C.GOTO(I,t)
+				out = self.C.state_number.get(g, None)
 				if out is None:
 					continue
 				key = (inum, t)

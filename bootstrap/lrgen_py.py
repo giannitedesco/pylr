@@ -18,13 +18,13 @@ class TokItem(StackItem):
 def write_sym_defs(lr, f):
 	print >>f, '\tSYM_EOF = %d'%SymEof().val
 	print >>f, '\tSYM_EPSILON = %d'%SymEpsilon().val
-	for nt in sorted(lr.reachables):
+	for nt in sorted(lr.lang.reachables):
 		if not isinstance(nt, NonTerminal):
 			continue
 		print >>f, '\t%s = %d'%(nt.cname(), nt.val)
 	
 	print >>f, '\t__names= {'
-	for nt in sorted(lr.reachables):
+	for nt in sorted(lr.lang.reachables):
 		print >>f, '\t\t%d: "%s",'%(nt.val, nt.name)
 		print >>f, '\t\t"%s": %d,'%(nt.name, nt.val)
 		print >>f, ''
