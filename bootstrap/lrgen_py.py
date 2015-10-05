@@ -86,7 +86,6 @@ def write_parse_func(lr, f):
 		return ret
 
 	def dispatch(self, k, args, nxt):
-		print ' dispatch', k, args
 		self.push(StackItem(nxt))
 
 	def feed(self, tok):
@@ -116,7 +115,6 @@ def write_parse_func(lr, f):
 			else:
 				raise Exception('bad action')
 
-			print
 			return
 
 '''

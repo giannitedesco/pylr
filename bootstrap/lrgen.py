@@ -23,7 +23,6 @@ class Collection(object):
 		super(Collection, self).__init__()
 		self.lang = lang
 		self.create_canonical_collection()
-		self.number_states(self.canonical)
 
 	def start_item(self):
 		s = self.lang.p['S']
@@ -32,19 +31,6 @@ class Collection(object):
 	def end_item(self):
 		s = self.lang.p['S']
 		return Item(s.rules[0], head = s.nt, pos = 1)
-
-	def number_states(self, C):
-		self.state_number = {}
-		self.state = {}
-		c = {}
-		k = {}
-		for i, I in enumerate(C):
-			self.state_number[I] = i
-			self.state[i] = I
-			c[i] = I
-			k[i] = kernel(I)
-		self.canonical = c
-		self.kernels = c
 
 	def GOTO(self, I, t):
 		assert(isinstance(t, Sym))
@@ -89,7 +75,18 @@ class LR0(Collection):
 						C.add(g)
 						fixpoint = False
 
-		self.canonical = C
+		self.state_number = {}
+		self.state = {}
+		c = {}
+		k = {}
+		for i, I in enumerate(C):
+			self.state_number[I] = i
+			self.state[i] = I
+			c[i] = I
+			k[i] = kernel(I)
+		self.canonical = c
+		self.kernels = c
+
 
 	def reduce_symbols(self, item):
 		return self.lang.FOLLOW[item.head.name]
@@ -177,25 +174,43 @@ class LALR1(LR1):
 		print 'Generating LALR(1) kernels'
 
 		self.lr0 = LR0(self.lang)
-		for K in self.lr0.kernels:
+		self.kernels = {}
+		self.state_number = {}
+		self.canonical = {}
+
+		for k,v in self.lr0.kernels.items():
+			self.kernels[k] = set(v)
+
+		for k,v in self.lr0.kernels.items():
+			I = self.closure(v)
+			self.canonical[k] = I
+			self.state_number[I] = k
+
+		for inum, K in self.lr0.kernels.items():
 			print ' - do a set with', len(K), 'items'
-			self.generate_lookaheads(K)
+			for k in K:
+				if k.is_start():
+					k.lookahead = SymEof()
+			#self.generate_lookaheads(inum, K)
+			for x in self.closure(K):
+				print x
+			print
 
-		self.canonical = set()
 
-	def generate_lookaheads(self, K):
+	def generate_lookaheads(self, inum, K):
 		for j in self.closure(K):
 			# if ( [B -> g.Xd, a] is in J, and a is not # )
 			# conclude that lookahead a is generated spontaneously
 			# for item B -> gX.d in GOTO(I, X);
 			def gen_lookahead(j, X):
 				new = Item(j, head = j.head, pos = j.pos + 1)
-				item_set = self.GOTO(self.closure(K), X)
-				#print 'Generate', j.lookahead
-				#print j
-				#print new
-				#print item_set in self.C
-				#print
+				item_set = self.GOTO(self.canonical[inum], X)
+				print inum, 'generate', j.lookahead
+				print j
+				print 'in'
+				for x in item_set:
+					print '', x
+				print
 				assert(new.is_kernel())
 
 			# if ( [B -> g.Xd, #] is in J )
