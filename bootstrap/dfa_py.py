@@ -18,7 +18,7 @@ class TokType(object):
 	def __init__(self):
 		super(TokType, self).__init__()
 '''
-	do_token(f, 'EOF', -1)
+	do_token(f, 'EOF', -2)
 	do_token(f, 'UNKNOWN', 0)
 	s = set()
 	for v in dfa.final.values():
@@ -31,7 +31,7 @@ class TokType(object):
 		i += 1
 
 def dfa_py(dfa, base_name, srcdir, includedir, table):
-	fn = base_name + '.py'
+	fn = join(srcdir, base_name + '.py')
 	f = open(fn, 'w')
 
 	print >>f, '# vim: set fileencoding=utf8 :'
@@ -133,10 +133,15 @@ class Lexer(object):
 				self.__symbol(sym)
 				return
 
+	def eof(self):
+		self.symbol('\\n')
+		self.emit(TOK_EOF)
+
 	def lex_file(self, f):
 		while True:
 			s = f.read(1024)
 			if not s:
+				self.eof()
 				return
 			for x in s:
 				self.symbol(x)

@@ -57,8 +57,13 @@ def main(argv):
 				type = str,
 				default = '.',
 				help = 'Directory to place header file')
-	opts.add_argument('--terminals',
+	opts.add_argument('--srcdir',
 				metavar = 'dir',
+				type = str,
+				default = '.',
+				help = 'Directory to place source file')
+	opts.add_argument('--terminals',
+				metavar = 'filename',
 				action = 'append',
 				type = str,
 				default = [],
@@ -98,7 +103,8 @@ def main(argv):
 
 	p = LRGen(g, 'S')
 	p.write_tables(args.base_name,
-			path = args.includedir,
+			srcdir = args.srcdir,
+			incdir = args.includedir,
 			language = args.language)
 
 	return EXIT_SUCCESS

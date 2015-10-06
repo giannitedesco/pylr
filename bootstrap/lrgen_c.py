@@ -109,10 +109,10 @@ def write_action_table(lr, f):
 	print >>f, '};'
 
 # This should be the rule class, remove pos
-def lrgen_c(lr, name, path):
+def lrgen_c(lr, name, srcdir, incdir):
 	from os.path import join
 
-	fn = join(path, name + '.h')
+	fn = join(incdir, name + '.h')
 	print 'writing', fn
 
 	f = open(fn, 'w')

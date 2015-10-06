@@ -55,6 +55,9 @@ def write_action_table(lr, f):
 			index, r = v
 			print >>f, '\t\t(%d, %d): (\'reduce\', %d),'%(\
 					i, a.val, index)
+		elif c == 'accept':
+			print >>f, '\t\t(%d, %d): (\'accept\', None),'%(\
+					i, a.val)
 	print >>f, '\t}'
 
 def write_sym_names(lr, f):
@@ -88,6 +91,9 @@ def write_parse_func(lr, f):
 	def dispatch(self, k, args, nxt):
 		self.push(StackItem(nxt))
 
+	def accept(self, root):
+		print 'ACCEPT', root
+
 	def feed(self, tok):
 		while True:
 			toktype = tok.toktype.id_number
@@ -97,8 +103,11 @@ def write_parse_func(lr, f):
 			(a, v) = self.ACTION[akey]
 
 			if a == 'accept':
-				if not self.accept(self.multipop(2)):
+				root = self.multipop(2)
+				if not root:
 					raise Exception('bad accept')
+				assert(not self.stack)
+				self.accept(root[1])
 			elif a == 'shift':
 				self.push(TokItem(v, tok))
 				if toktype == self.SYM_EOF:
@@ -120,10 +129,10 @@ def write_parse_func(lr, f):
 '''
 
 # This should be the rule class, remove pos
-def lrgen_py(lr, name, path):
+def lrgen_py(lr, name, srcdir, incdir):
 	from os.path import join
 
-	fn = join(path, name + '.py')
+	fn = join(srcdir, name + '.py')
 	print 'writing', fn
 
 	f = open(fn, 'w')

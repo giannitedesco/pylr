@@ -476,11 +476,12 @@ class LRGen(object):
 		return goto
 
 
-	def write_tables(self, name, path = '.', language = 'C'):
+	def write_tables(self, name, srcdir = '.',
+				incdir = '.', language = 'C'):
 		fns = {
 			'C':lrgen_c,
 			'py':lrgen_py,
 			'py2':lrgen_py,
 			'python':lrgen_py,
 			}
-		fns[language](self, name, path)
+		fns[language](self, name, srcdir, incdir)
