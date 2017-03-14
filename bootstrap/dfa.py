@@ -1,6 +1,6 @@
 from ast import AstLiteral
 from graph import Graph
-from c import CFile, HFile
+from dfa_c import CFile, HFile
 from os.path import join
 
 from dfa_c import dfa_c

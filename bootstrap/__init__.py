@@ -71,7 +71,7 @@ from ast import *
 from parser import ParseTree, parse
 from dfa import DFA
 from graph import Graph
-from c import CFile, HFile
+from dfa_c import CFile, HFile
 
 from symbol import *
 from grammar import Production, Grammar
