@@ -89,7 +89,7 @@ class Lexer(object):
 
 	def emit(self, toktype):
 		val = toktype().action(self.buf)
-		tok = Token(toktype, self.line, self.col, self.buf)
+		tok = Token(toktype, self.line, self.col, val)
 		if self.cb is not None:
 			self.cb(tok)
 
@@ -113,7 +113,7 @@ class Lexer(object):
 		old = self.state
 		self.state = new = self.next_state(old, sym)
 
-		if old and self.accept.has_key(old) and not new:
+		if old and old in self.accept and not new:
 			self.emit(self.accept[old])
 			self.clear_buf()
 			self.to_buf(sym)

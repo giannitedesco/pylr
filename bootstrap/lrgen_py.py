@@ -68,19 +68,19 @@ def write_init(lr, f):
 	print >>f, '\tdef __init__(self):'
 	print >>f, '\t\tsuper(Parser, self).__init__()'
 	print >>f, '\t\tself.stack = []'
-	print >>f, '\t\tself.push(StackItem(self.initial_state))'
+	print >>f, '\t\tself._push(StackItem(self.initial_state))'
 
 def write_parse_func(lr, f):
 	print >>f, '''\t# Parsing methods
-	def stack_top(self):
+	def _stack_top(self):
 		assert(len(self.stack))
 		return self.stack[-1]
 	
-	def push(self, item):
+	def _push(self, item):
 		assert(isinstance(item, StackItem))
 		self.stack.append(item)
 
-	def multipop(self, cnt):
+	def _multipop(self, cnt):
 		if not cnt:
 			return []
 		assert(len(self.stack) >= cnt)
@@ -88,38 +88,38 @@ def write_parse_func(lr, f):
 		self.stack = self.stack[:-cnt]
 		return ret
 
-	def dispatch(self, k, args, nxt):
-		self.push(StackItem(nxt))
+	def _dispatch(self, k, args, nxt):
+		self._push(StackItem(nxt))
 
-	def accept(self, root):
-		print 'ACCEPT', root
+	def _accept(self, root):
+		print('ACCEPT', root)
 
 	def feed(self, tok):
 		while True:
 			toktype = tok.toktype.id_number
-			akey = (self.stack_top().st, toktype)
-			if not self.ACTION.has_key(akey):
+			akey = (self._stack_top().st, toktype)
+			if not akey in self.ACTION:
 				raise Exception('Parse Error')
 			(a, v) = self.ACTION[akey]
 
 			if a == 'accept':
-				root = self.multipop(2)
+				root = self._multipop(2)
 				if not root:
 					raise Exception('bad accept')
 				assert(not self.stack)
-				self.accept(root[1])
+				self._accept(root[1])
 			elif a == 'shift':
-				self.push(TokItem(v, tok))
+				self._push(TokItem(v, tok))
 				if toktype == self.SYM_EOF:
 					continue
 			elif a == 'reduce':
 				(k, l, head) = self.productions[v]
-				args = self.multipop(l)
-				gkey = (self.stack_top().st, head)
-				if not self.GOTO.has_key(gkey):
+				args = self._multipop(l)
+				gkey = (self._stack_top().st, head)
+				if not gkey in self.GOTO:
 					raise Exception('GOTO Error')
 				j = self.GOTO[gkey]
-				self.dispatch(k, args, j)
+				self._dispatch(k, args, j)
 				continue
 			else:
 				raise Exception('bad action')
