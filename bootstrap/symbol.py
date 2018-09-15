@@ -6,23 +6,29 @@ class Sym(tuple):
     __slots__ = ()
     _next_val = 0
     val = property(itemgetter(0))
-    cname = property(itemgetter(1))
+    basename = property(itemgetter(1))
     name = property(itemgetter(2))
 
-    def __new__(cls, name, *extra, val = None, cname = None):
+    def __new__(cls, name, *extra, val = None, basename = None):
         if val is None:
             val = Sym._next_val
             Sym._next_val += 1
         else:
             val = int(val)
 
-        if cname is None:
-            cname = 'SYM_' + name
-        else:
-            cname = cname
+        if basename is None:
+            basename = name.upper().replace(' ', '_')
 
-        args = (val, cname, name) + extra
+        args = (val, basename, name) + extra
         return super().__new__(cls, args)
+
+    @property
+    def cname(self):
+        return 'SYM_' + self.basename
+
+    @property
+    def pyame(self):
+        return 'Sym.' + self.basename
 
     def __str__(self):
         return '%s(%s)'%(self.__class__.__name__, self.name)
@@ -50,8 +56,8 @@ class SymSpecial(Sym):
     def __hash__(self):
         return hash(tuple(self))
 
-SymEpsilon = SymSpecial('ε', val = -1, cname = 'SYM_EPSILON')
-SymEof = SymSpecial('$', val = -2, cname = 'SYM_EOF')
+SymEpsilon = SymSpecial('ε', val = -1, basename = 'EPSILON')
+SymEof = SymSpecial('$', val = -2, basename = 'EOF')
 
 class Terminal(Sym):
     def __new__(cls, name, **kwargs):
@@ -94,4 +100,4 @@ class SpecialNonTerminal(NonTerminal):
     def __repr__(self):
         return self.name
 
-SymStart = SpecialNonTerminal('S', val = -3, cname = 'SYM_START')
+SymStart = SpecialNonTerminal('S', val = -3, basename = 'START')

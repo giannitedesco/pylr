@@ -1,6 +1,7 @@
 from .symbol import *
 
 def write_stack_item(f):
+    print(file=f)
     print('''class StackItem(object):
     def __init__(self, st):
         super(StackItem, self).__init__()
@@ -12,23 +13,14 @@ class TokItem(StackItem):
         super(TokItem, self).__init__(st)
         self.tok = tok
     def __repr__(self):
-        return 'TokItem(%s, %s)'%(self.st, self.tok.val)
-''', file=f)
+        return 'TokItem(%s, %s)'%(self.st, self.tok.val)''', file=f)
 
-def write_sym_defs(lr, f):
-    print('    SYM_EOF = %d'%SymEof.val, file=f)
-    print('    SYM_EPSILON = %d'%SymEpsilon.val, file=f)
+def write_sym_enum(lr, f):
+    def line(sym):
+        print('    %s = %d'%(sym.basename, sym.val), file=f)
+
     for nt in sorted(lr.lang.reachables):
-        if not isinstance(nt, NonTerminal):
-            continue
-        print('    %s = %d'%(nt.cname, nt.val), file=f)
-    
-    print('    __names= {', file=f)
-    for nt in sorted(lr.lang.reachables):
-        print('        %d: "%s",'%(nt.val, nt.name), file=f)
-        print('        "%s": %d,'%(nt.name, nt.val), file=f)
-        print('', file=f)
-    print('    }', file=f)
+        line(nt)
 
 def write_goto_table(lr, f):
     print('    GOTO = {', file=f)
@@ -61,8 +53,16 @@ def write_action_table(lr, f):
     print('    }', file=f)
 
 def write_sym_names(lr, f):
-    print('    def __getitem__(self, key):', file=f)
-    print('        return self.__names[key]', file=f)
+    print('''    def __getitem__(self, key):
+        try:
+            return Sym[key]
+        except KeyError:
+            pass
+        try:
+            return Sym(key)
+        except KeyError:
+            pass
+''', file=f)
 
 def write_init(lr, f):
     print('    def __init__(self):', file=f)
@@ -110,7 +110,7 @@ def write_parse_func(lr, f):
                 self._accept(root[1])
             elif a == 'shift':
                 self._push(TokItem(v, tok))
-                if toktype == self.SYM_EOF:
+                if toktype == Sym.EOF:
                     continue
             elif a == 'reduce':
                 (k, l, head) = self.productions[v]
@@ -136,13 +136,17 @@ def lrgen_py(lr, name, srcdir, incdir):
     print('writing', fn)
 
     f = open(fn, 'w')
-    print('# vim: set fileencoding=utf8 :\n', file=f)
+    print('# vim: set fileencoding=utf8 :', file=f)
+    print('from enum import IntEnum', file=f)
 
     write_stack_item(f)
 
+    print(file=f)
+    print('class Sym(IntEnum):', file=f)
+    write_sym_enum(lr, f)
+
+    print(file=f)
     print('class Parser(object):', file=f)
-    write_sym_defs(lr, f)
-    print('', file=f)
 
     print('    initial_state = %d'%lr.initial, file=f)
     print('', file=f)
