@@ -25,7 +25,7 @@ def write_sym_enum(lr, f):
 def write_goto_table(lr, f):
     print('    GOTO = {', file=f)
     for ((i, A), j) in sorted(lr.goto.items()):
-        print('        (%d, %d): %d,'%(i, A.val, j), file=f)
+        print('        (%d, %s): %d,'%(i, A.pyname, j), file=f)
     print('    }', file=f)
 
 def write_production_table(lr, f):
@@ -33,8 +33,8 @@ def write_production_table(lr, f):
     for v, k in sorted([(v, k) for (k, v) in \
                 list(lr.productions.items())]):
         (index, plen, head) = v
-        print('        %s: (\'%s\', %d, %d),'%(index, k,
-                            plen, head.val), file=f)
+        print('        %s: (%d, %s), # %s'%(index, plen, head.pyname, k),
+                file=f)
     print('    }\n', file=f)
 
 def write_action_table(lr, f):
@@ -88,7 +88,7 @@ def write_parse_func(lr, f):
         self.stack = self.stack[:-cnt]
         return ret
 
-    def _dispatch(self, k, args, nxt):
+    def _dispatch(self, head, args, nxt):
         self._push(StackItem(nxt))
 
     def _accept(self, root):
@@ -113,13 +113,13 @@ def write_parse_func(lr, f):
                 if toktype == Sym.EOF:
                     continue
             elif a == 'reduce':
-                (k, l, head) = self.productions[v]
+                (l, head) = self.productions[v]
                 args = self._multipop(l)
                 gkey = (self._stack_top().st, head)
                 if not gkey in self.GOTO:
                     raise Exception('GOTO Error')
                 j = self.GOTO[gkey]
-                self._dispatch(k, args, j)
+                self._dispatch(head, args, j)
                 continue
             else:
                 raise Exception('bad action')
@@ -147,7 +147,7 @@ def lrgen_py(lr, name, srcdir, incdir):
 
     print(file=f)
     print('class Parser(object):', file=f)
-
+    print('    __slots__ = (\'stack\',)', file=f)
     print('    initial_state = %d'%lr.initial, file=f)
     print('', file=f)
 

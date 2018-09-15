@@ -27,7 +27,7 @@ class Sym(tuple):
         return 'SYM_' + self.basename
 
     @property
-    def pyame(self):
+    def pyname(self):
         return 'Sym.' + self.basename
 
     def __str__(self):
