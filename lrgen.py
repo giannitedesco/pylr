@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from argparse import ArgumentParser
 from bootstrap import *
@@ -27,7 +27,7 @@ def read_terminals(fn):
 
 def parse_bnf(fn, tbl = {}):
     for p in parse(fn, break_terminals=False):
-        if tbl.has_key(p.name):
+        if p.name in tbl:
             raise Exception('%s multiply defind'%p.name)
         tbl[p.name] = p
     return tbl
@@ -78,16 +78,16 @@ def main(argv):
 
     s = {}
     nt = {}
-    map(lambda x:parse_terminals(x, s), args.terminals)
-    map(lambda x:parse_bnf(x, nt), args.files)
+    list(map(lambda x:parse_terminals(x, s), args.terminals))
+    list(map(lambda x:parse_bnf(x, nt), args.files))
 
     g = Grammar().from_bnf(nt, s)
     if g is None:
-        return EXIT_FAILURE
+        raise Exception('failed')
 
     # Add start symbol as RealStart then EOF
     start_sym = args.start.upper().replace(' ', '_')
-    print 'Taking %s as start symbol'%start_sym
+    print('Taking %s as start symbol'%start_sym)
     g.augment(start_sym)
 
     # Add productions for any nonterminals without thmm
@@ -107,8 +107,7 @@ def main(argv):
             incdir = args.includedir,
             language = args.language)
 
-    return EXIT_SUCCESS
-
 if __name__ == '__main__':
     from sys import argv
-    raise SystemExit, main(argv)
+    main(argv)
+    raise SystemExit

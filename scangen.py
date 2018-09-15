@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from argparse import ArgumentParser
 from bootstrap import parse, ParseTree, AstLiteral, DFA
 
 def parse_bnf(fn, tbl = {}):
     for p in parse(fn):
-        if tbl.has_key(p.name):
+        if p.name in tbl:
             raise Exception('%s multiply defind'%p.name)
         tbl[p.name] = p
     return tbl
@@ -25,7 +25,7 @@ def builtin_productions(tbl = {}):
         '__rbr__': '}',
         '__vbar__': '|',
     }
-    for k, v in d.items():
+    for k, v in list(d.items()):
         p = ParseTree(k)
         p.root = AstLiteral(v)
         tbl[p.name] = p
@@ -39,8 +39,8 @@ def resolve_ambiguity(dfa):
             nf[i] = f
             continue
         x = sorted([(x.lineno, x) for x in f])
-        f = ', '.join(map(lambda x:'%s'%x.rule_name, sorted(f)))
-        print 'Ambiguity: %s, picked %s'%(f, x[0][1].rule_name)
+        f = ', '.join(sorted(map(lambda x:x.rule_name, f)))
+        print('Ambiguity: %s, picked %s'%(f, x[0][1].rule_name))
         #print x[0][1]
         nf[i] = [x[0][1]]
     dfa.final = nf
@@ -85,7 +85,7 @@ if __name__ == '__main__':
 
     tbl = {}
     builtin_productions(tbl)
-    map(lambda x:parse_bnf(x, tbl), args.files)
+    list(map(lambda x:parse_bnf(x, tbl), args.files))
 
     dfa = DFA(tbl[args.production], tbl)
     del tbl
@@ -105,4 +105,4 @@ if __name__ == '__main__':
             includedir = args.includedir,
             language = args.language)
 
-    raise SystemExit, 0
+    raise SystemExit(0)

@@ -1,14 +1,14 @@
-from ast import AstLiteral
-from graph import Graph
-from dfa_c import CFile, HFile
+from .ast import AstLiteral
+from .graph import Graph
+from .dfa_c import CFile, HFile
 from os.path import join
 
-from dfa_c import dfa_c
-from dfa_py import dfa_py
+from .dfa_c import dfa_c
+from .dfa_py import dfa_py
 
 class Block(frozenset):
     def __init__(self, *args, **kwargs):
-        super(Block, self).__init__(*args, **kwargs)
+        super().__init__()
     def stable_refinement(self, func):
         #    partition b into subgroups such that two states s and t
         #    are in the same subgroup if and only if for all
@@ -20,7 +20,7 @@ class Block(frozenset):
         for x in self:
             ff = func.get(x, frozenset({}))
             r.setdefault(ff, []).append(x)
-        ret = map(Block, r.values())
+        ret = list(map(Block, list(r.values())))
         #for k,v in r.items():
         #    print '%s -> %s'%(k, v)
         #print self
@@ -34,38 +34,36 @@ class Block(frozenset):
 class Partition(set):
     def __init__(self, *args, **kwargs):
         self.item_mapping = {}
-        super(Partition, self).__init__()
+        super().__init__()
         if len(args):
             for x in args[0]:
                 self.add(x)
     def add(self, item):
         assert(isinstance(item, Block))
         for x in item:
-            assert(not self.item_mapping.has_key(x))
+            assert(x not in self.item_mapping)
             self.item_mapping[x] = item
-        super(Partition, self).add(item)
+        super().add(item)
     def update(self, s):
         for item in s:
             self.add(item)
     def popitem(self):
-        item = super(Partition, self).popitem()
+        item = super().popitem()
         for x in item:
-            assert(self.item_mapping.has_key(x))
+            assert(x in self.item_mapping)
             del self.item_mapping[x]
         return item
     def block_func(self, func, final):
         # re-write the function to indicate the block which the
         # item is bucketed in to
         f = {}
-        for k,v in func.items():
-            f[k] = frozenset(map(lambda (x,y):
-                    (x, self.item_mapping[y]),
-                    v.items()))
+        for k,v in list(func.items()):
+            f[k] = frozenset([(x_y[0], self.item_mapping[x_y[1]]) for x_y in list(v.items())])
 
         # Any final blocks are given an outgoing edge to knowhere
         # keyed on the name of the accepting state
-        for k,v in final.items():
-            v = '|'.join(map(lambda x:x.rule_name, sorted(v)))
+        for k,v in list(final.items()):
+            v = '|'.join(sorted(map(lambda x:x.rule_name, v)))
             f[k] = frozenset(set({(v,None)}).union(f.get(k, set({}))))
         return f
     def refine(self, func, final):
@@ -102,10 +100,10 @@ class DFA(object):
         # Construct the position table
         postbl = []
         r.root.leaves(postbl)
-        for (pos, x) in zip(xrange(len(postbl)), postbl):
+        for (pos, x) in zip(range(len(postbl)), postbl):
             x.position = pos
 
-        print 'NFA has %u positions'%len(postbl)
+        print('NFA has %u positions'%len(postbl))
 
         # Calculate the followpos function
         r.root.calc_followpos(postbl)
@@ -124,14 +122,14 @@ class DFA(object):
             num_states += 1
 
             #print 'S = %s'%S
-            S2 = filter(lambda x:isinstance(postbl[x],
-                    AstLiteral), S)
-            SS = map(lambda x:(postbl[x].literal, x), S2)
+            S2 = [x for x in S if isinstance(postbl[x],
+                    AstLiteral)]
+            SS = [(postbl[x].literal, x) for x in S2]
             s = {}
             for a, p in SS:
                 s.setdefault(a, set()).add(p)
 
-            for a, v in s.items():
+            for a, v in list(s.items()):
                 U = set()
                 for p in v:
                     U.update(postbl[p].followpos)
@@ -153,7 +151,7 @@ class DFA(object):
 
         f = []
         r.root.finals(f)
-        f = set(map(lambda x:x.position, f))
+        f = set([x.position for x in f])
 
         # free up state sets and use the renumbering
         final = {}
@@ -173,10 +171,10 @@ class DFA(object):
         self.final = final
         self.trans = trans
 
-        print 'DFA has %u states and %u transitions'%(\
+        print('DFA has %u states and %u transitions'%(\
                         self.num_states,
-                        self.num_trans)
-        super(DFA, self).__init__()
+                        self.num_trans))
+        super().__init__()
 
     def shrink(self, obsolete):
         def new_number(v, o):
@@ -194,11 +192,11 @@ class DFA(object):
 
         def renumber(r, o, s):
             ret = {}
-            for k,v in r.items():
+            for k,v in list(r.items()):
                 assert(k not in obsolete)
                 ret[k] = replace(v, o)
             r = ret
-            for k,v in r.items():
+            for k,v in list(r.items()):
                 assert(k not in obsolete)
                 ret[k] = new_number(v, s)
             return ret
@@ -207,7 +205,7 @@ class DFA(object):
         new = {}
         num_trans = 0
         s = sorted(obsolete.keys())
-        for k, v in self.trans.items():
+        for k, v in list(self.trans.items()):
             v = renumber(v, obsolete, s)
             new[new_number(k, s)] = v
             num_trans += len(v)
@@ -217,7 +215,7 @@ class DFA(object):
         # now all final states in the group apply so we
         # need to do merge them in here as we renumber
         nf = {}
-        for k,v in self.final.items():
+        for k,v in list(self.final.items()):
             nk = obsolete.get(k, k)
             if nk != k:
                 v = list(set(self.final.get(nk, []) + v))
@@ -233,7 +231,7 @@ class DFA(object):
     def optimize(self):
         # 1. partition in to final and non-final, S
         f = Block(self.final)
-        nf = Block(set(xrange(self.num_states)).difference(f))
+        nf = Block(set(range(self.num_states)).difference(f))
         S = Partition({f, nf})
 
         # 2. until fix-point
@@ -248,7 +246,7 @@ class DFA(object):
             if len(b) <= 1:
                 continue
             i = iter(b)
-            v = i.next()
+            v = next(i)
             for k in i:
                 obsolete[k] = v
                 try:
@@ -257,25 +255,24 @@ class DFA(object):
                     pass
 
         self.shrink(obsolete)
-        print 'DFA has %d states and %d transitions (optimal)'%(\
-            self.num_states, self.num_trans)
+        print('DFA has %d states and %d transitions (optimal)'%(\
+            self.num_states, self.num_trans))
 
     def dump_graph(self, fn):
         g = Graph('DFA', fn)
 
-        for i in xrange(self.num_states):
+        for i in range(self.num_states):
             kwargs = {'label': str(i + 1)}
             if i in self.final:
                 kwargs['shape'] = 'doublecircle'
                 kwargs['color'] = 'red'
                 kwargs['label'] = '\\n'.join(\
-                    map(lambda x:x.rule_name,
-                        self.final[i]))
+                    [x.rule_name for x in self.final[i]])
             if i == self.initial:
                 kwargs['color'] = 'blue'
             g.add_node(str(i + 1), **kwargs)
 
-        for pre, d in self.trans.items():
+        for pre, d in list(self.trans.items()):
             for sym, post in sorted(d.items()):
                 g.add_edge(pre + 1, post + 1, sym)
 

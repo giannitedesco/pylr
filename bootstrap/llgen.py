@@ -1,5 +1,5 @@
-from symbol import *
-from grammar import Grammar
+from .symbol import *
+from .grammar import Grammar
 
 class LLGen(object):
     def __init__(self, g, start):
@@ -15,7 +15,7 @@ class LLGen(object):
         self.parse = self.construct_parse_table()
 
     def construct_parse_table(self):
-        print 'Construct parse table...'
+        print('Construct parse table...')
         t = {}
         for xx in self.g.reachables():
             if not isinstance(xx, NonTerminal):
@@ -32,11 +32,11 @@ class LLGen(object):
                     s -= set([SymEpsilon()])
                     s |= self.g.FOLLOW[A.name]
                 for a in s:
-                    if t.has_key((A,a)):
-                        print 'AMBIGUOUS', A, a
-                        print t[A,a]
-                        print r
-                        print
+                    if (A,a) in t:
+                        print('AMBIGUOUS', A, a)
+                        print(t[A,a])
+                        print(r)
+                        print()
                         continue
                     t[A,a] = r
         #for k, v in t.items():
@@ -47,7 +47,7 @@ class LLGen(object):
         from os.path import join
 
         fn = join(path, name + '.h')
-        print 'writing', fn
+        print('writing', fn)
 
         def cname(s):
             if s is SymEpsilon():

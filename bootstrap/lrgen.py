@@ -1,12 +1,12 @@
-from symbol import *
-from grammar import Grammar
-from lrgen_c import lrgen_c
-from lrgen_py import lrgen_py
+from .symbol import *
+from .grammar import Grammar
+from .lrgen_c import lrgen_c
+from .lrgen_py import lrgen_py
 
 class kernel(frozenset):
-    def __init__(self, s):
-        k = filter(lambda x:x.is_kernel(), s)
-        return super(kernel, self).__init__(self, k)
+    def __new__(cls, s):
+        k = [x for x in s if x.is_kernel()]
+        return super().__new__(cls, k)
 
 class Language(object):
     def __init__(self, g):
@@ -49,8 +49,8 @@ class Collection(object):
 
 class LR0(Collection):
     def create_canonical_collection(self):
-        print 'Construct canonical %s collection'%\
-            self.__class__.__name__
+        print('Construct canonical %s collection'%\
+            self.__class__.__name__)
         C = set()
         C.add(self.closure(frozenset([self.start_item()])))
 
@@ -70,7 +70,7 @@ class LR0(Collection):
                         lookahead = i.lookahead)
                     d.setdefault(x, set()).add(new)
 
-                for g in map(self.closure, d.values()):
+                for g in map(self.closure, list(d.values())):
                     if g and g not in C:
                         C.add(g)
                         fixpoint = False
@@ -171,30 +171,30 @@ class LALR1(LR1):
         super(LALR1, self).__init__(lang)
 
     def create_canonical_collection(self):
-        print 'Generating LALR(1) kernels'
+        print('Generating LALR(1) kernels')
 
         self.lr0 = LR0(self.lang)
         self.kernels = {}
         self.state_number = {}
         self.canonical = {}
 
-        for k,v in self.lr0.kernels.items():
+        for k,v in list(self.lr0.kernels.items()):
             self.kernels[k] = set(v)
 
-        for k,v in self.lr0.kernels.items():
+        for k,v in list(self.lr0.kernels.items()):
             I = self.closure(v)
             self.canonical[k] = I
             self.state_number[I] = k
 
-        for inum, K in self.lr0.kernels.items():
-            print ' - do a set with', len(K), 'items'
+        for inum, K in list(self.lr0.kernels.items()):
+            print(' - do a set with', len(K), 'items')
             for k in K:
                 if k.is_start():
                     k.lookahead = SymEof()
             #self.generate_lookaheads(inum, K)
             for x in self.closure(K):
-                print x
-            print
+                print(x)
+            print()
 
 
     def generate_lookaheads(self, inum, K):
@@ -205,12 +205,12 @@ class LALR1(LR1):
             def gen_lookahead(j, X):
                 new = Item(j, head = j.head, pos = j.pos + 1)
                 item_set = self.GOTO(self.canonical[inum], X)
-                print inum, 'generate', j.lookahead
-                print j
-                print 'in'
+                print(inum, 'generate', j.lookahead)
+                print(j)
+                print('in')
                 for x in item_set:
-                    print '', x
-                print
+                    print('', x)
+                print()
                 assert(new.is_kernel())
 
             # if ( [B -> g.Xd, #] is in J )
@@ -237,27 +237,28 @@ class LALR1(LR1):
 
 # item should be a pair of ints, (rule_idx, pos)
 class Item(tuple):
-    def __new__(cls, arg = [], **kwargs):
+    def __new__(cls, arg = (), **kwargs):
         if arg:
             if arg[-1] is SymEof():
                 arg = arg[:-1]
             elif len(arg) == 1 and arg[0] == SymEpsilon():
                 arg = []
-        return super(Item, cls).__new__(cls, arg)
-    def __init__(self, arg = [], **kwargs):
+        if arg:
+            if arg[-1] is SymEof():
+                arg = arg[:-1]
+            elif len(arg) == 1 and arg[0] == SymEpsilon():
+                arg = []
+        self = super().__new__(cls, arg)
         self.head = kwargs.pop('head')
         self.pos = int(kwargs.pop('pos'))
         self.lookahead = kwargs.pop('lookahead', None)
-        if arg:
-            if arg[-1] is SymEof():
-                arg = arg[:-1]
-            elif len(arg) == 1 and arg[0] == SymEpsilon():
-                arg = []
-        super(Item, self).__init__(arg, **kwargs)
         assert(self.pos >= 0)
         assert(not arg or self.pos <= len(self))
+        return self
+
     def __str__(self):
-        def f((i, x)):
+        def f(xxx_todo_changeme):
+            (i, x) = xxx_todo_changeme
             if i == self.pos:
                 return '. ' + x.name
             elif i == len(self) - 1 and self.pos == len(self):
@@ -274,32 +275,20 @@ class Item(tuple):
     def __repr__(self):
         return str(self)
 
-    def __cmp(a, b):
-        r = cmp(a.head, b.head)
-        if r:
-            return r
-        r = cmp(a.pos, b.pos)
-        if r:
-            return r
-        r = cmp(a.lookahead, b.lookahead)
-        if r:
-            return r
-        r = cmp(tuple(a), tuple(b))
-        if r:
-            return r
-        return 0
+    def sortkey(self):
+        return (self.head, self.pos, self.lookahead, tuple(self))
     def __eq__(a, b):
-        return (a.__cmp(b) == 0)
+        return a.sortkey() == b.sortkey()
     def __neq__(a, b):
-        return (a.__cmp(b) != 0)
+        return a.sortkey() != b.sortkey()
     def __gt__(a, b):
-        return (a.__cmp(b) > 0)
+        return a.sortkey() > b.sortkey()
     def __lt__(a, b):
-        return (a.__cmp(b) < 0)
+        return a.sortkey() < b.sortkey()
     def __gte__(a, b):
-        return (a.__cmp(b) >= 0)
+        return a.sortkey() >= b.sortkey()
     def __lte__(a, b):
-        return (a.__cmp(b) <= 0)
+        return a.sortkey() <= b.sortkey()
     def __hash__(self):
         return super(Item, self).__hash__() \
             ^ hash(self.pos) \
@@ -354,19 +343,19 @@ class LRGen(object):
 
         # TODO: close each kernel using CLOSURE from LR(1) Fig 4.40
         # TODO: LR(1) table entries using LR(1) algo 4.56
-        print 'Constructing parse tables'
+        print('Constructing parse tables')
         self.action = self.construct_action_table()
         self.goto = self.construct_goto()
         self.initial = self.initial_state()
 
     def initial_state(self):
         s = self.C.start_item()
-        for (I, inum) in self.C.state_number.items():
+        for (I, inum) in list(self.C.state_number.items()):
             if s in I:
                 return inum
 
     def construct_action_table(self):
-        print 'Construct action table...'
+        print('Construct action table...')
 
         action = {}
 
@@ -380,9 +369,9 @@ class LRGen(object):
             if old == new:
                 return
 
-            print 'shift/reduce conflict'
-            print old
-            print new
+            print('shift/reduce conflict')
+            print(old)
+            print(new)
             if old[0] == 'accept':
                 action[key] = new
             elif new[0] == 'accept':
@@ -392,16 +381,16 @@ class LRGen(object):
             elif old[0] == 'shift' and new[0] == 'reduce':
                 pass
             else:
-                print 'unable to resolve'
+                print('unable to resolve')
                 raise Exception('action table conflict')
 
         def prod_name(r):
-            t = map(lambda x:x.name.lower(), r)
+            t = [x.name.lower() for x in r]
             if not t:
                 t = ('epsilon',)
 
             t = r.head.name.upper()
-            f = map(lambda x:x.name.upper(), r)
+            f = [x.name.upper() for x in r]
             if not f:
                 f = ('EPSILON',)
 
@@ -428,7 +417,7 @@ class LRGen(object):
                 val = ('reduce', (index, r))
                 handle_conflict(key, val)
 
-        for (I, inum) in self.C.state_number.items():
+        for (I, inum) in list(self.C.state_number.items()):
             if self.C.end_item() in I:
                 key = (inum, SymEof())
                 val = ('accept', True)
@@ -453,14 +442,14 @@ class LRGen(object):
         #for k, v in sorted(action.items()):
         #    print k, '->', v
 
-        print 'action table:', len(action), 'entries'
+        print('action table:', len(action), 'entries')
         return action
 
     def construct_goto(self):
-        print 'Construct goto table...'
+        print('Construct goto table...')
 
         goto = {}
-        for (I, inum) in self.C.state_number.items():
+        for (I, inum) in list(self.C.state_number.items()):
             for t in self.lang.reachables:
                 if not isinstance(t, NonTerminal):
                     continue
@@ -472,7 +461,7 @@ class LRGen(object):
                 val = out
                 goto[key] = val
 
-        print 'goto table:', len(goto), 'entries'
+        print('goto table:', len(goto), 'entries')
         return goto
 
 

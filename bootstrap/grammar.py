@@ -1,6 +1,6 @@
-from symbol import *
-from ast import *
-from graph import Graph
+from .symbol import *
+from .ast import *
+from .graph import Graph
 
 def recurse(nt, node, g):
 
@@ -42,7 +42,7 @@ def recurse(nt, node, g):
     elif isinstance(node, AstConcat):
         return a + b
     else:
-        print node
+        print(node)
         assert(False)
 
 def bnf_to_production(g, name, bnf):
@@ -56,8 +56,8 @@ def bnf_to_production(g, name, bnf):
     # First check the tree
     for node in bnf:
         if isinstance(node, AstLiteral):
-            print 'rule "%s", literal "%s" not allowed'%(\
-                    name, node.literal)
+            print('rule "%s", literal "%s" not allowed'%(\
+                    name, node.literal))
             return
 
     r = recurse(sym, bnf, g)
@@ -70,11 +70,11 @@ def bnf_to_production(g, name, bnf):
 
 def make_grammar(p = {}, s = {}):
     g = Grammar()
-    for v in s.values():
+    for v in list(s.values()):
         g.symbol(v)
     for k in p:
         g.symbol(NonTerminal(k.upper().replace(' ', '_')))
-    for v in sorted(p.values()):
+    for v in sorted(p.values(), key=lambda x:x.lineno):
         p = bnf_to_production(g, v.name, v.root)
         if p is None:
             return None
@@ -115,7 +115,7 @@ class Production(object):
             #self.__s = set(map(tuple, val))
             self.__s = set()
             setter('rules', [])
-            map(self.rule, val)
+            list(map(self.rule, val))
         else:
             super(Production, self).__setattr__(attr, val)
     def __str__(self):
@@ -167,8 +167,8 @@ class Grammar(object):
             raise TypeError
         assert(p.nt.val in self.nt)
         assert(p.nt.name in self.sym)
-        map(self.p.setdefault(p.nt.name, Production(p.nt)).rule,
-            p.rules)
+        list(map(self.p.setdefault(p.nt.name, Production(p.nt)).rule,
+            p.rules))
 
     def get(self, k):
         try:
@@ -186,14 +186,14 @@ class Grammar(object):
             raise TypeError
 
     def __iter__(self):
-        return iter(self.p.values())
+        return iter(list(self.p.values()))
 
     def construct_markers(self):
-        print 'construct markers...'
-        for s in self.sym.values():
+        print('construct markers...')
+        for s in list(self.sym.values()):
             if isinstance(s, NonTerminal) and \
-                    not self.p.has_key(s.name):
-                print 'ADDING MARKER', s.name
+                    s.name not in self.p:
+                print('ADDING MARKER', s.name)
                 self.p[s.name] = Production(s, [SymEpsilon()])
 
     def remove_singletons(self):
@@ -228,9 +228,9 @@ class Grammar(object):
                     continue
                 if not nt.is_prime():
                     continue
-                if not self.p.has_key(nt.name):
+                if nt.name not in self.p:
                     continue
-                if not g.has_key(nt):
+                if nt not in g:
                     continue
                 if len(g[nt]) != 1:
                     continue
@@ -238,22 +238,21 @@ class Grammar(object):
                 post = self.p[nt.name]
 
                 new = list()
-                pre.rules = filter(lambda x:f(x, post),
-                            pre.rules)
+                pre.rules = [x for x in pre.rules if f(x, post)]
                 pre.rules.extend(post.rules)
                 killed.add(nt)
 
                 fixpoint = False
 
         for k in killed:
-            if k in self.nt:
-                self.nt.remove(k)
+            if k.val in self.nt:
+                self.nt.remove(k.val)
             del self.sym[k.name]
             del self.lookup[k.val]
             del self.p[k.name]
 
     def wrap_terminals(self):
-        print 'wrap terminals...'
+        print('wrap terminals...')
         for t in map(self.__getitem__, self.t):
             s = NonTerminal('TERMINAL_%s'%t.name)
             s.terminal_marker = True
@@ -269,17 +268,17 @@ class Grammar(object):
             return sym
 
         def wrap(rule):
-            return map(do_wrap, rule)
+            return list(map(do_wrap, rule))
 
-        for nt, p in self.p.items():
+        for nt, p in list(self.p.items()):
             if self[nt].terminal_marker:
                 continue
-            p.rules = map(wrap, p.rules)
+            p.rules = list(map(wrap, p.rules))
 
     def normalize(self):
-        print 'normalize...'
+        print('normalize...')
         def long_rules():
-            for nt, p in self.p.items():
+            for nt, p in list(self.p.items()):
                 for r in p:
                     if len(r) <= 2:
                         continue
@@ -292,7 +291,7 @@ class Grammar(object):
             #print r
 
             n = [p.nt.new_prime() for x in r[1:-1]]
-            map(self.symbol, n)
+            list(map(self.symbol, n))
 
             for j, w in enumerate(r[:-1]):
                 if not j:
@@ -311,15 +310,14 @@ class Grammar(object):
             #print
 
         # remove all the old, long rules
-        for nt, p in self.p.items():
+        for nt, p in list(self.p.items()):
             for r in p:
-                p.rules = filter(lambda x:len(x) <= 2,
-                            p.rules)
+                p.rules = [x for x in p.rules if len(x) <= 2]
 
     def eliminate_epsilons(self):
-        print 'eliminate epsilon productions...'
+        print('eliminate epsilon productions...')
         rcopy = []
-        for nt, rules in self.p.items():
+        for nt, rules in list(self.p.items()):
             for r in rules:
                 rcopy.append((self[nt], r))
 
@@ -352,13 +350,13 @@ class Grammar(object):
             nr = len(r) == 1 and r[0] is SymEpsilon()
             return not nr
 
-        for nt, p in self.p.items():
-            p.rules = filter(f, p.rules)
+        for nt, p in list(self.p.items()):
+            p.rules = list(filter(f, p.rules))
 
     def eliminate_unit_rules(self):
-        print 'eliminate unit rules...'
+        print('eliminate unit rules...')
         def unit_rules():
-            for l, p in self.p.items():
+            for l, p in list(self.p.items()):
                 if self[l].terminal_marker:
                     continue
                 for r in p:
@@ -406,12 +404,12 @@ class Grammar(object):
                     continue
             def nonunit(r):
                 return len(r) != 2
-            f.rules = filter(nonunit, e.rules)
+            f.rules = list(filter(nonunit, e.rules))
 
             # remove rule E -> F
             def kill(rule):
                 return rule != [f.nt]
-            e.rules = filter(kill, e.rules)
+            e.rules = list(filter(kill, e.rules))
 
         def traverse(x):
             try:
@@ -427,26 +425,26 @@ class Grammar(object):
             #print
 
     def dump(self):
-        print '--'
+        print('--')
         for l in sorted(self.reachables()):
             if not isinstance(l, NonTerminal):
                 continue
             p = self.p[l.name]
             for r in p:
-                print l.name, '->', \
-                    ' '.join(map(lambda x:x.name, r))
-        print '--'
+                print(l.name, '->', \
+                    ' '.join([x.name for x in r]))
+        print('--')
 
     def eliminate_immediate_left_recursion(self, p):
         def f(r):
             return r[0] == p.nt
-        lr = filter(f, p.rules)
+        lr = list(filter(f, p.rules))
 
         if not lr:
             return
 
-        nlr = filter(lambda x: not f(x), p.rules)
-        print p.nt.name, 'is immediately left recursive'
+        nlr = [x for x in p.rules if not f(x)]
+        print(p.nt.name, 'is immediately left recursive')
         #print lr
         #print nlr
 
@@ -492,7 +490,7 @@ class Grammar(object):
                     yield y
 
     def eliminate_left_recursion(self):
-        print 'eliminate left recursion...'
+        print('eliminate left recursion...')
 
         def sprod(start = None, s = None):
             if s is None:
@@ -530,10 +528,10 @@ class Grammar(object):
         def elim(a, b):
             new = []
             d = [False]
-            a.rules = filter(lambda x:f(x, b, new, d), a.rules)
+            a.rules = [x for x in a.rules if f(x, b, new, d)]
             if new:
-                print a.nt.name, 'is left recursive'
-                print 'add', len(new), 'new rules'
+                print(a.nt.name, 'is left recursive')
+                print('add', len(new), 'new rules')
             a.rules.extend(new)
             return d[0]
 
@@ -601,11 +599,11 @@ class Grammar(object):
                 #    self.eliminate_immediate_left_recursion(p)
 
     def left_factor(self):
-        print 'Left factoring...'
+        print('Left factoring...')
 
         def cp(a, b):
             p = []
-            for i in xrange(min(len(a), len(b))):
+            for i in range(min(len(a), len(b))):
                 if a[i] == b[i]:
                     p.append(a[i])
                 else:
@@ -683,9 +681,9 @@ class Grammar(object):
     def construct_FIRST(self):
         if self.FIRST is not None:
             return self.FIRST
-        print 'Construct FIRST function..'
+        print('Construct FIRST function..')
         def do_FIRST(nt, f):
-            if f.has_key(nt.name):
+            if nt.name in f:
                 return f[nt.name]
             p = self.p[nt.name]
             s = set()
@@ -698,8 +696,8 @@ class Grammar(object):
                 else:
                     tmp = set([start])
                 if s & tmp:
-                    print ' FIRST/FIRST conflict ->', \
-                        nt.name, s & tmp
+                    print(' FIRST/FIRST conflict ->', \
+                        nt.name, s & tmp)
                 s |= tmp
             f[nt.name] = s
             return s
@@ -720,9 +718,9 @@ class Grammar(object):
         if self.FOLLOW is not None:
             return self.FOLLOW
         self.construct_FIRST()
-        print 'Construct FOLLOW function..'
+        print('Construct FOLLOW function..')
         def do_FOLLOW(nt, f):
-            if f.has_key(nt.name):
+            if nt.name in f:
                 return f[nt.name]
             s = set()
             rec = []

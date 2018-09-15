@@ -65,16 +65,16 @@ __all__ = [
     'LRGen',
 ]
 
-from tokens import *
-from tokenizer import tokenize
-from ast import *
-from parser import ParseTree, parse
-from dfa import DFA
-from graph import Graph
-from dfa_c import CFile, HFile
+from .tokens import *
+from .tokenizer import tokenize
+from .ast import *
+from .parser import ParseTree, parse
+from .dfa import DFA
+from .graph import Graph
+from .dfa_c import CFile, HFile
 
-from symbol import *
-from grammar import Production, Grammar
+from .symbol import *
+from .grammar import Production, Grammar
 
-from llgen import LLGen
-from lrgen import LRGen
+from .llgen import LLGen
+from .lrgen import LRGen

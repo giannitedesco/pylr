@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from bootstrap import *
 
@@ -35,7 +35,7 @@ def read_productions(g, fn):
         if not l[2:]:
             r = [SymEpsilon()]
         else:
-            r = map(g.get, l[2:])
+            r = list(map(g.get, l[2:]))
         p = Production(pnt, r)
         yield p
 
@@ -54,7 +54,7 @@ def main(argv):
         g.production(p)
 
     # Add start symbol as RealStart then EOF
-    print 'Taking %s as start symbol'%start_sym
+    print('Taking %s as start symbol'%start_sym)
     g.augment(start_sym)
 
     g.construct_markers()
@@ -68,4 +68,4 @@ def main(argv):
 
 if __name__ == '__main__':
     from sys import argv
-    raise SystemExit, main(argv)
+    raise SystemExit(main(argv))

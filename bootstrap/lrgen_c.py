@@ -1,4 +1,4 @@
-from symbol import *
+from .symbol import *
 
 def large_enough_type(x):
     if x <= 0xff:
@@ -34,86 +34,86 @@ def write_sym_names(lr, f):
     f.write('}\n')
 
 def write_goto_table(lr, f):
-    print >>f, 'static const struct {'
-    print >>f, '\tunsigned int i;'
-    print >>f, '\tint A;'
-    print >>f, '\tunsigned int j;'
-    print >>f, '}GOTO[] = {'
+    print('static const struct {', file=f)
+    print('\tunsigned int i;', file=f)
+    print('\tint A;', file=f)
+    print('\tunsigned int j;', file=f)
+    print('}GOTO[] = {', file=f)
     for ((i, A), j) in sorted(lr.goto.items()):
-        print >> f, '\t{ %d, %s, %d },'%(i, A.cname(), j)
-    print >>f, '};'
+        print('\t{ %d, %s, %d },'%(i, A.cname(), j), file=f)
+    print('};', file=f)
 
 def write_productions_enum(lr, f):
-    print >>f, 'enum production_idx {'
+    print('enum production_idx {', file=f)
     for k in sorted(lr.productions.keys()):
-        print >>f, "\t%s,"%k
-    print >>f, '\tNR_PRODUCTIONS,'
-    print >>f, "};"
+        print("\t%s,"%k, file=f)
+    print('\tNR_PRODUCTIONS,', file=f)
+    print("};", file=f)
 
-    t = large_enough_type(len(lr.productions.keys()))
-    print >>f
-    print >>f, 'typedef %s production_idx_t;'%t
+    t = large_enough_type(len(list(lr.productions.keys())))
+    print(file=f)
+    print('typedef %s production_idx_t;'%t, file=f)
 
 def write_production_table(lr, f):
-    print >>f, 'static const struct production {'
-    print >>f, '\tunsigned int len;'
-    print >>f, '\tint head;'
-    print >>f, '\tproduction_idx_t action;'
-    print >>f, '}productions[] = {'
+    print('static const struct production {', file=f)
+    print('\tunsigned int len;', file=f)
+    print('\tint head;', file=f)
+    print('\tproduction_idx_t action;', file=f)
+    print('}productions[] = {', file=f)
     for v, k in sorted([(v, k) for (k, v) in \
-                lr.productions.items()]):
+                list(lr.productions.items())]):
         (index, plen, head) = v
-        print >>f, '\t{'
-        print >>f, '\t\t.action = %s,'%k
-        print >>f, '\t\t.len = %d,'%plen
-        print >>f, '\t\t.head = %s,'%head.cname()
-        print >>f, '\t},'
-    print >>f, '};'
+        print('\t{', file=f)
+        print('\t\t.action = %s,'%k, file=f)
+        print('\t\t.len = %d,'%plen, file=f)
+        print('\t\t.head = %s,'%head.cname(), file=f)
+        print('\t},', file=f)
+    print('};', file=f)
 
 def write_action_table(lr, f):
-    print >>f, '#define ACTION_ERROR\t0'
-    print >>f, '#define ACTION_ACCEPT\t1'
-    print >>f, '#define ACTION_SHIFT\t2'
-    print >>f, '#define ACTION_REDUCE\t3'
-    print >>f
-    print >>f, 'struct shift_move {'
-    print >>f, '\tunsigned int t;'
-    print >>f, '};'
-    print >>f
-    print >>f, 'struct reduce_move {'
-    print >>f, '\tunsigned int index;'
-    print >>f, '};'
-    print >>f
-    print >>f, 'static const struct action {'
-    print >>f, '\tunsigned int i;'
-    print >>f, '\tint a;'
-    print >>f, '\tuint8_t action;;'
-    print >>f, '\tunion {'
-    print >>f, '\t\tstruct shift_move shift;'
-    print >>f, '\t\tstruct reduce_move reduce;'
-    print >>f, '\t}u;'
-    print >>f, '}ACTION[] = {'
+    print('#define ACTION_ERROR\t0', file=f)
+    print('#define ACTION_ACCEPT\t1', file=f)
+    print('#define ACTION_SHIFT\t2', file=f)
+    print('#define ACTION_REDUCE\t3', file=f)
+    print(file=f)
+    print('struct shift_move {', file=f)
+    print('\tunsigned int t;', file=f)
+    print('};', file=f)
+    print(file=f)
+    print('struct reduce_move {', file=f)
+    print('\tunsigned int index;', file=f)
+    print('};', file=f)
+    print(file=f)
+    print('static const struct action {', file=f)
+    print('\tunsigned int i;', file=f)
+    print('\tint a;', file=f)
+    print('\tuint8_t action;;', file=f)
+    print('\tunion {', file=f)
+    print('\t\tstruct shift_move shift;', file=f)
+    print('\t\tstruct reduce_move reduce;', file=f)
+    print('\t}u;', file=f)
+    print('}ACTION[] = {', file=f)
     for ((i,a), (c, v)) in sorted(lr.action.items()):
-        print >>f, '\t{'
-        print >>f, '\t\t.i = %d,'%i
-        print >>f, '\t\t.a = %s,'%a.cname()
-        print >>f, '\t\t.action = ACTION_%s,'%c.upper()
+        print('\t{', file=f)
+        print('\t\t.i = %d,'%i, file=f)
+        print('\t\t.a = %s,'%a.cname(), file=f)
+        print('\t\t.action = ACTION_%s,'%c.upper(), file=f)
         if c == 'shift':
-            print >>f, '\t\t.u.shift = { .t = %d },'%v
+            print('\t\t.u.shift = { .t = %d },'%v, file=f)
         elif c == 'reduce':
             index, r = v
-            print >>f, '\t\t.u.reduce = {'
-            print >>f, '\t\t\t.index = %d,'%index
-            print >>f, '\t\t},'
-        print >>f, '\t},'
-    print >>f, '};'
+            print('\t\t.u.reduce = {', file=f)
+            print('\t\t\t.index = %d,'%index, file=f)
+            print('\t\t},', file=f)
+        print('\t},', file=f)
+    print('};', file=f)
 
 # This should be the rule class, remove pos
 def lrgen_c(lr, name, srcdir, incdir):
     from os.path import join
 
     fn = join(incdir, name + '.h')
-    print 'writing', fn
+    print('writing', fn)
 
     f = open(fn, 'w')
     f.write('#ifndef _%s_H\n'%name.upper())

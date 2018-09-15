@@ -1,6 +1,6 @@
-from tokens import *
-from ast import *
-from tokenizer import tokenize
+from .tokens import *
+from .ast import *
+from .tokenizer import tokenize
 
 class ParseTree(object):
     def __init__(self, name, final = False, action = None, lineno = 0):
@@ -127,10 +127,6 @@ class ParseTree(object):
         c = self.__cb[tok.__class__]
         c(self, tok)
 
-    def __cmp__(a, b):
-        assert(isinstance(b, ParseTree))
-        return cmp(a.lineno, b.lineno)
-
     def eof(self):
         self.__clear_stack()
         if self.stack:
@@ -176,7 +172,7 @@ def parse(fn, break_terminals=True):
             (name, kwargs) = get_parms(t)
             p = ParseTree(name, **kwargs)
         elif break_terminals and isinstance(t, TokLiteral):
-            map(lambda x:p.feed(TokLiteral(x, t.lineno)), t.name)
+            list(map(lambda x:p.feed(TokLiteral(x, t.lineno)), t.name))
         else:
             p.feed(t)
     if p is not None:

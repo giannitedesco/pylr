@@ -11,8 +11,7 @@ class Graph(object):
         return '\"%s\"'%s
     def add_node(self, n, **kwargs):
         n = self.q(n)
-        a = ' '.join(map(lambda (k,v):'%s=%s'%(k, self.q(v)),
-                kwargs.items()))
+        a = ' '.join(['%s=%s'%(k_v[0], self.q(k_v[1])) for k_v in list(kwargs.items())])
         self.f.write('%s [%s];\n'%(n,a))
     def add_edge(self, pre, post, label):
         pre = self.q(pre)

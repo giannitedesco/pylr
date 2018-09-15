@@ -1,12 +1,12 @@
 # vim: set fileencoding=utf8 :
 
-class AstNode(object):
+class AstNode:
     def __init__(self):
         self._nullable = None
         self._firstpos = None
         self._lastpos = None
         self.followpos = None
-        super(AstNode, self).__init__()
+        super().__init__()
 
     # default is for leaves
     def resolve_links(self, tbl = {}, v = set()):
@@ -33,7 +33,7 @@ class AstNode(object):
         return self._lastpos
     def calc_followpos(self, postbl = []):
         if self.followpos is not None:
-            print self, self.literal
+            print((self, self.literal))
         assert(self.followpos is None)
         self.followpos = set()
 
@@ -42,10 +42,10 @@ class AstNode(object):
 
 class AstEpsilon(AstNode):
     def __init__(self):
-        super(AstEpsilon, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s"ε"'%(pfx)
+        print(('%s"ε"'%(pfx)))
     def __str__(self):
         return 'ε'
     def __repr__(self):
@@ -67,10 +67,10 @@ class AstAccept(AstNode):
         self.rule_name = name
         self.lineno = lineno
         self.action = action
-        super(AstAccept, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s"# %s"'%(pfx, self.rule_name)
+        print(('%s"# %s"'%(pfx, self.rule_name)))
     def __str__(self):
         return '#(%s)'%self.rule_name
     def __repr__(self):
@@ -93,10 +93,10 @@ class AstLiteral(AstNode):
         elif literal == '\\':
             literal = '\\\\'
         self.literal = literal
-        super(AstLiteral, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s"%s"'%(pfx, self.literal)
+        print(('%s"%s"'%(pfx, self.literal)))
     def _calc_nullable(self):
         return False
     def _calc_firstpos(self):
@@ -109,10 +109,10 @@ class AstLiteral(AstNode):
 class AstLink(AstNode):
     def __init__(self, p):
         self.p = p
-        super(AstLink, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s-> %s'%(pfx, self.p)
+        print(('%s-> %s'%(pfx, self.p)))
     def symbol_name(self):
         return self.p.upper().replace(' ', '_')
     def resolve_links(self, tbl = {}, v = set()):
@@ -135,10 +135,10 @@ class AstLink(AstNode):
 class AstUnary(AstNode):
     def __init__(self, op):
         self.op = op
-        super(AstUnary, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s<%s>'%(pfx, self.__class__.__name__)
+        print(('%s<%s>'%(pfx, self.__class__.__name__)))
         self.op.pretty_print(depth + 1)
     def __str__(self):
         return '%s(%s)'%(self.__class__.__name__, self.op)
@@ -171,10 +171,10 @@ class AstBinary(AstNode):
     def __init__(self, a, b):
         self.a = a
         self.b = b
-        super(AstBinary, self).__init__()
+        super().__init__()
     def pretty_print(self, depth = 0):
         pfx = ' ' * depth * 2
-        print '%s<%s>'%(pfx, self.__class__.__name__)
+        print(('%s<%s>'%(pfx, self.__class__.__name__)))
         for x in [self.a, self.b]:
             x.pretty_print(depth + 1)
     def resolve_links(self, tbl = {}, v = set()):
@@ -214,15 +214,15 @@ class AstBinary(AstNode):
 
 class AstEllipsis(AstUnary):
     def __init__(self, op):
-        super(AstEllipsis, self).__init__(op)
+        super().__init__(op)
     def flatten(self):
         # <x>... is equivalent <x>+, or <x><x>*
-        super(AstEllipsis, self).flatten()
+        super().flatten()
         return AstConcat(self.op, AstClosure(self.op.copy()))
 
 class AstClosure(AstUnary):
     def __init__(self, op):
-        super(AstClosure, self).__init__(op)
+        super().__init__(op)
     def _calc_nullable(self):
         return True
     def _calc_firstpos(self):
@@ -230,19 +230,19 @@ class AstClosure(AstUnary):
     def _calc_lastpos(self):
         return self.op.lastpos()
     def calc_followpos(self, postbl = []):
-        super(AstClosure, self).calc_followpos(postbl)
+        super().calc_followpos(postbl)
         for i in self.lastpos():
             postbl[i].followpos.update(self.firstpos())
 
 class AstBraces(AstUnary):
     def __init__(self, op):
-        super(AstBraces, self).__init__(op)
+        super().__init__(op)
     def flatten(self):
         return self.op.flatten()
 
 class AstSquares(AstUnary):
     def __init__(self, op):
-        super(AstSquares, self).__init__(op)
+        super().__init__(op)
     def flatten(self):
         # [ <x>... ] idiom is equivalent to <x>*
         if isinstance(self.op, AstEllipsis):
@@ -251,7 +251,7 @@ class AstSquares(AstUnary):
 
 class AstConcat(AstBinary):
     def __init__(self, a, b):
-        super(AstConcat, self).__init__(a, b)
+        super().__init__(a, b)
     def _calc_nullable(self):
         return self.a.nullable() and self.b.nullable()
     def _calc_firstpos(self):
@@ -265,15 +265,15 @@ class AstConcat(AstBinary):
         else:
             return self.b.lastpos()
     def calc_followpos(self, postbl = []):
-        super(AstConcat, self).calc_followpos(postbl)
+        super().calc_followpos(postbl)
         for i in self.a.lastpos():
             postbl[i].followpos.update(self.b.firstpos())
 
 class AstChoice(AstBinary):
     def __init__(self, a, b):
-        super(AstChoice, self).__init__(a, b)
+        super().__init__(a, b)
     def flatten(self):
-        super(AstChoice, self).flatten()
+        super().flatten()
         return self
     def _calc_nullable(self):
         return self.a.nullable() or self.b.nullable()

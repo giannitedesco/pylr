@@ -1,4 +1,4 @@
-from tokens import *
+from .tokens import *
 
 def read_file(fn):
     f = open(fn)

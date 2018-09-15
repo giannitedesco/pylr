@@ -1,7 +1,7 @@
-from symbol import *
+from .symbol import *
 
 def write_stack_item(f):
-    print >>f, '''class StackItem(object):
+    print('''class StackItem(object):
     def __init__(self, st):
         super(StackItem, self).__init__()
         self.st = st
@@ -13,65 +13,65 @@ class TokItem(StackItem):
         self.tok = tok
     def __repr__(self):
         return 'TokItem(%s, %s)'%(self.st, self.tok.val)
-'''
+''', file=f)
 
 def write_sym_defs(lr, f):
-    print >>f, '\tSYM_EOF = %d'%SymEof().val
-    print >>f, '\tSYM_EPSILON = %d'%SymEpsilon().val
+    print('    SYM_EOF = %d'%SymEof().val, file=f)
+    print('    SYM_EPSILON = %d'%SymEpsilon().val, file=f)
     for nt in sorted(lr.lang.reachables):
         if not isinstance(nt, NonTerminal):
             continue
-        print >>f, '\t%s = %d'%(nt.cname(), nt.val)
+        print('    %s = %d'%(nt.cname(), nt.val), file=f)
     
-    print >>f, '\t__names= {'
+    print('    __names= {', file=f)
     for nt in sorted(lr.lang.reachables):
-        print >>f, '\t\t%d: "%s",'%(nt.val, nt.name)
-        print >>f, '\t\t"%s": %d,'%(nt.name, nt.val)
-        print >>f, ''
-    print >>f, '\t}'
+        print('        %d: "%s",'%(nt.val, nt.name), file=f)
+        print('        "%s": %d,'%(nt.name, nt.val), file=f)
+        print('', file=f)
+    print('    }', file=f)
 
 def write_goto_table(lr, f):
-    print >>f, '\tGOTO = {'
+    print('    GOTO = {', file=f)
     for ((i, A), j) in sorted(lr.goto.items()):
-        print >> f, '\t\t(%d, %d): %d,'%(i, A.val, j)
-    print >>f, '\t}'
+        print('        (%d, %d): %d,'%(i, A.val, j), file=f)
+    print('    }', file=f)
 
 def write_production_table(lr, f):
-    print >>f, '\tproductions = {'
+    print('    productions = {', file=f)
     for v, k in sorted([(v, k) for (k, v) in \
-                lr.productions.items()]):
+                list(lr.productions.items())]):
         (index, plen, head) = v
-        print >>f, '\t\t%s: (\'%s\', %d, %d),'%(index, k,
-                            plen, head.val)
-    print >>f, '\t}\n'
+        print('        %s: (\'%s\', %d, %d),'%(index, k,
+                            plen, head.val), file=f)
+    print('    }\n', file=f)
 
 def write_action_table(lr, f):
-    print >>f, '\tACTION = {'
+    print('    ACTION = {', file=f)
     for ((i,a), (c, v)) in sorted(lr.action.items()):
         if c == 'shift':
-            print >>f, '\t\t(%d, %d): (\'shift\', %d),'%(\
-                    i, a.val, v)
+            print('        (%d, %d): (\'shift\', %d),'%(\
+                    i, a.val, v), file=f)
         elif c == 'reduce':
             index, r = v
-            print >>f, '\t\t(%d, %d): (\'reduce\', %d),'%(\
-                    i, a.val, index)
+            print('        (%d, %d): (\'reduce\', %d),'%(\
+                    i, a.val, index), file=f)
         elif c == 'accept':
-            print >>f, '\t\t(%d, %d): (\'accept\', None),'%(\
-                    i, a.val)
-    print >>f, '\t}'
+            print('        (%d, %d): (\'accept\', None),'%(\
+                    i, a.val), file=f)
+    print('    }', file=f)
 
 def write_sym_names(lr, f):
-    print >>f, '\tdef __getitem__(self, key):'
-    print >>f, '\t\treturn self.__names[key]'
+    print('    def __getitem__(self, key):', file=f)
+    print('        return self.__names[key]', file=f)
 
 def write_init(lr, f):
-    print >>f, '\tdef __init__(self):'
-    print >>f, '\t\tsuper(Parser, self).__init__()'
-    print >>f, '\t\tself.stack = []'
-    print >>f, '\t\tself._push(StackItem(self.initial_state))'
+    print('    def __init__(self):', file=f)
+    print('        super(Parser, self).__init__()', file=f)
+    print('        self.stack = []', file=f)
+    print('        self._push(StackItem(self.initial_state))', file=f)
 
 def write_parse_func(lr, f):
-    print >>f, '''\t# Parsing methods
+    print('''    # Parsing methods
     def _stack_top(self):
         assert(len(self.stack))
         return self.stack[-1]
@@ -126,38 +126,38 @@ def write_parse_func(lr, f):
 
             return
 
-'''
+''', file=f)
 
 # This should be the rule class, remove pos
 def lrgen_py(lr, name, srcdir, incdir):
     from os.path import join
 
     fn = join(srcdir, name + '.py')
-    print 'writing', fn
+    print('writing', fn)
 
     f = open(fn, 'w')
-    print >>f, '# vim: set fileencoding=utf8 :\n'
+    print('# vim: set fileencoding=utf8 :\n', file=f)
 
     write_stack_item(f)
 
-    print >>f, 'class Parser(object):'
+    print('class Parser(object):', file=f)
     write_sym_defs(lr, f)
-    print >>f, ''
+    print('', file=f)
 
-    print >>f, '\tinitial_state = %d'%lr.initial
-    print >>f, ''
+    print('    initial_state = %d'%lr.initial, file=f)
+    print('', file=f)
 
     write_production_table(lr, f)
     write_action_table(lr, f)
-    print >>f, ''
+    print('', file=f)
 
     write_goto_table(lr, f)
-    print >>f, ''
+    print('', file=f)
 
     write_sym_names(lr, f)
-    print >>f, ''
+    print('', file=f)
 
     write_init(lr, f)
-    print >>f, ''
+    print('', file=f)
 
     write_parse_func(lr, f)

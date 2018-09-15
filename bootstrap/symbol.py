@@ -14,12 +14,22 @@ class Sym(object):
         return '%s(%s)'%(self.__class__.__name__, self.name)
     def __repr__(self):
         return '%s(%s)'%(self.__class__.__name__, self.name)
-    def __cmp__(a, b):
-        if not isinstance(b, Sym):
-            raise TypeError
-        return cmp(a.val, b.val)
     def cname(self):
         return 'SYM_' + self.name
+    def __eq__(a, b):
+        return a.val == b.val
+    def __neq__(a, b):
+        return a.val != b.val
+    def __gt__(a, b):
+        return a.val > b.val
+    def __lt__(a, b):
+        return a.val < b.val
+    def __gte__(a, b):
+        return a.val >= b.val
+    def __lte__(a, b):
+        return a.val <= b.val
+    def __hash__(self):
+        return hash(self.val)
 
 class SymEpsilon(Sym):
     __instance = None
@@ -77,11 +87,6 @@ class NonTerminal(Sym):
         p.num_primes += 1
         name = '%s_PRIME%d'%(p.name, p.num_primes)
         return NonTerminal(name, prime_for = p)
-    def __cmp__(a, b):
-        if not isinstance(b, Sym):
-            raise TypeError
-        return cmp(a.val, b.val)
-
 
 class SymStart(NonTerminal):
     __instance = None

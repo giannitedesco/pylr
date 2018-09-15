@@ -8,20 +8,20 @@ def do_token(f, name, idnum, action = 'discard'):
         'str': 'str',
     }
     name = 'TOK_' + name
-    print >>f, 'class %s(TokType):'%name
-    print >>f, '\tid_number = %d'%idnum
-    print >>f, '\taction = %s'%d[action]
+    print('class %s(TokType):'%name, file=f)
+    print('    id_number = %d'%idnum, file=f)
+    print('    action = %s'%d[action], file=f)
 
 def write_tokens(dfa, f):
-    print >>f, '''
+    print('''
 class TokType(object):
     def __init__(self):
         super(TokType, self).__init__()
-'''
+''', file=f)
     do_token(f, 'EOF', -2)
     do_token(f, 'UNKNOWN', 0)
     s = set()
-    for v in dfa.final.values():
+    for v in list(dfa.final.values()):
         s.update([x for x in v])
     s = sorted([(x.lineno, x.rule_name, x.action) for x in s])
     i = 1
@@ -34,14 +34,14 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
     fn = join(srcdir, base_name + '.py')
     f = open(fn, 'w')
 
-    print >>f, '# vim: set fileencoding=utf8 :'
+    print('# vim: set fileencoding=utf8 :', file=f)
 
     write_tokens(dfa, f)
 
     d = {
         'initial_state':1,
     }
-    print >>f, '''
+    print('''
 class Token(object):
     def __init__(self, toktype, line, col, val = None):
         super(Token, self).__init__()
@@ -52,27 +52,27 @@ class Token(object):
 
 class Lexer(object):
     initial_state = %(initial_state)d
-'''%d
+'''%d, file=f)
 
-    print >>f, '\taccept = {'
-    for i in xrange(dfa.num_states):
+    print('    accept = {', file=f)
+    for i in range(dfa.num_states):
         if i in dfa.final:
             x = dfa.final[i][0]
             v = x.rule_name.upper().replace(' ', '_')
         else:
             continue
-        print >>f, '\t\t%s: TOK_%s,'%(i + 1, v)
-    print >>f, '\t}'
+        print('        %s: TOK_%s,'%(i + 1, v), file=f)
+    print('    }', file=f)
 
-    print >>f, '\ttrans = {'
-    for pre, d in dfa.trans.items():
-        print >>f, '\t\t%u: {'%(pre + 1)
+    print('    trans = {', file=f)
+    for pre, d in list(dfa.trans.items()):
+        print('        %u: {'%(pre + 1), file=f)
         for sym, post in sorted(d.items()):
-            print >>f, '\t\t\tord(\'%s\'): %u,'%(sym, post + 1)
-        print >>f, '\t\t},'
-    print >>f, '\t}'
+            print('            ord(\'%s\'): %u,'%(sym, post + 1), file=f)
+        print('        },', file=f)
+    print('    }', file=f)
 
-    print >>f, '''
+    print('''
     def __init__(self, cb):
         super(Lexer, self).__init__()
         self.clear_buf()
@@ -148,6 +148,6 @@ class Lexer(object):
     def lex_buf(self, s):
         for x in s:
             self.symbol(x)
-'''%d
+'''%d, file=f)
 
     f.close()
