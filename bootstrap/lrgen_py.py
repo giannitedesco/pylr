@@ -96,7 +96,7 @@ def write_parse_func(lr, f):
 
     def feed(self, tok):
         while True:
-            toktype = tok.toktype.id_number
+            toktype = tok.toktype
             akey = (self._stack_top().st, toktype)
             if not akey in self.ACTION:
                 raise Exception('Parse Error')

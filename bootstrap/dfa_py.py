@@ -1,40 +1,43 @@
 from os.path import splitext, basename, join
-
-def do_token(f, name, idnum, action = 'discard'):
-    d = {
-        'discard': 'lambda self, x: None',
-        'uint': 'lambda self, x: int(x, 0)',
-        'int': 'lambda self, x: int(x, 0)',
-        'str': 'str',
-    }
-    name = 'TOK_' + name
-    print('class %s(TokType):'%name, file=f)
-    print('    id_number = %d'%idnum, file=f)
-    print('    action = %s'%d[action], file=f)
+from .symbol import SymEof
 
 def write_tokens(dfa, f):
-    print('''
-class TokType(object):
-    def __init__(self):
-        super(TokType, self).__init__()
-''', file=f)
-    do_token(f, 'EOF', -2)
-    do_token(f, 'UNKNOWN', 0)
+
+    # Sort and uniquify the final states
     s = set()
     for v in list(dfa.final.values()):
         s.update([x for x in v])
-    s = sorted([(x.lineno, x.rule_name, x.action) for x in s])
-    i = 1
-    for (lineno,x,action) in s:
-        tn = '%s'%x.upper().replace(' ', '_')
-        do_token(f, tn, i, action)
-        i += 1
+    s = tuple(sorted(s, key = lambda x:(x.lineno, x.rule_name, x.action)))
+
+    print(file=f)
+    print('class Tok(IntEnum):', file=f)
+    print('    EOF = %d'%SymEof.val, file=f)
+    print('    UNKNOWN = 0', file=f)
+    for i, tok in enumerate(s, 1):
+        tn = '%s'%tok.rule_name.upper().replace(' ', '_')
+        print('    %s = %d'%(tn, i), file=f)
+
+    d = {
+        'discard': 'lambda x: None',
+        'uint': 'lambda x: int(x, 0)',
+        'int': 'lambda x: int(x, 0)',
+        'str': 'str',
+    }
+
+    print(file=f)
+    print('_action = {', file=f)
+    print('    Tok.EOF: %s,'%(d['discard']), file=f)
+    for i, tok in enumerate(s, 1):
+        tn = '%s'%tok.rule_name.upper().replace(' ', '_')
+        print('    Tok.%s: %s,'%(tn, d[tok.action]), file=f)
+    print('}', file=f)
 
 def dfa_py(dfa, base_name, srcdir, includedir, table):
     fn = join(srcdir, base_name + '.py')
     f = open(fn, 'w')
 
     print('# vim: set fileencoding=utf8 :', file=f)
+    print('from enum import IntEnum', file=f)
 
     write_tokens(dfa, f)
 
@@ -61,7 +64,7 @@ class Lexer(object):
             v = x.rule_name.upper().replace(' ', '_')
         else:
             continue
-        print('        %s: TOK_%s,'%(i + 1, v), file=f)
+        print('        %s: Tok.%s,'%(i + 1, v), file=f)
     print('    }', file=f)
 
     print('    trans = {', file=f)
@@ -88,7 +91,7 @@ class Lexer(object):
             return 0
 
     def emit(self, toktype):
-        val = toktype().action(self.buf)
+        val = _action[toktype](self.buf)
         tok = Token(toktype, self.line, self.col, val)
         if self.cb is not None:
             self.cb(tok)
@@ -135,7 +138,7 @@ class Lexer(object):
 
     def eof(self):
         self.symbol('\\n')
-        self.emit(TOK_EOF)
+        self.emit(Tok.EOF)
 
     def lex_file(self, f):
         while True:
