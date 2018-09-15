@@ -12,19 +12,19 @@ def large_enough_type(x):
 
 
 def write_sym_defs(lr, f):
-    f.write('#define SYM_EOF %d\n'%SymEof().val)
-    f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
+    f.write('#define SYM_EOF %d\n'%SymEof.val)
+    f.write('#define SYM_EPSILON %d\n'%SymEpsilon.val)
     for nt in sorted(lr.lang.reachables):
         if not isinstance(nt, NonTerminal):
             continue
-        f.write('#define %s %d\n'%(nt.cname(), nt.val))
+        f.write('#define %s %d\n'%(nt.cname, nt.val))
 
 def write_sym_names(lr, f):
     f.write('static inline const char *sym_name(int sym)\n')
     f.write('{\n')
     f.write('\tswitch(sym) {\n')
     for nt in sorted(lr.lang.reachables):
-        f.write('\tcase %s:\n'%(nt.cname()))
+        f.write('\tcase %s:\n'%(nt.cname))
         f.write('\t\treturn "%s";\n'%(nt.name))
     #f.write('\tcase SYM_EPSILON:\n')
     #f.write('\t\treturn "EPSILON";\n')
@@ -40,7 +40,7 @@ def write_goto_table(lr, f):
     print('\tunsigned int j;', file=f)
     print('}GOTO[] = {', file=f)
     for ((i, A), j) in sorted(lr.goto.items()):
-        print('\t{ %d, %s, %d },'%(i, A.cname(), j), file=f)
+        print('\t{ %d, %s, %d },'%(i, A.cname, j), file=f)
     print('};', file=f)
 
 def write_productions_enum(lr, f):
@@ -66,7 +66,7 @@ def write_production_table(lr, f):
         print('\t{', file=f)
         print('\t\t.action = %s,'%k, file=f)
         print('\t\t.len = %d,'%plen, file=f)
-        print('\t\t.head = %s,'%head.cname(), file=f)
+        print('\t\t.head = %s,'%head.cname, file=f)
         print('\t},', file=f)
     print('};', file=f)
 
@@ -96,7 +96,7 @@ def write_action_table(lr, f):
     for ((i,a), (c, v)) in sorted(lr.action.items()):
         print('\t{', file=f)
         print('\t\t.i = %d,'%i, file=f)
-        print('\t\t.a = %s,'%a.cname(), file=f)
+        print('\t\t.a = %s,'%a.cname, file=f)
         print('\t\t.action = ACTION_%s,'%c.upper(), file=f)
         if c == 'shift':
             print('\t\t.u.shift = { .t = %d },'%v, file=f)

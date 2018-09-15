@@ -28,8 +28,8 @@ class LLGen(object):
                     s = self.g.FIRST[first.name]
                 else:
                     s = set([first])
-                if SymEpsilon() in s:
-                    s -= set([SymEpsilon()])
+                if SymEpsilon in s:
+                    s -= set([SymEpsilon])
                     s |= self.g.FOLLOW[A.name]
                 for a in s:
                     if (A,a) in t:
@@ -50,9 +50,9 @@ class LLGen(object):
         print('writing', fn)
 
         def cname(s):
-            if s is SymEpsilon():
+            if s is SymEpsilon:
                 return 'SYM_EPSILON'
-            if s is SymEof():
+            if s is SymEof:
                 return 'SYM_EOF'
             if isinstance(s, NonTerminal):
                 return 'SYM_' + s.name.replace("'", '_PRIME')
@@ -64,8 +64,8 @@ class LLGen(object):
         f.write('#define _%s_H\n'%name.upper())
         f.write('\n')
 
-        f.write('#define SYM_EOF %d\n'%SymEof().val)
-        f.write('#define SYM_EPSILON %d\n'%SymEpsilon().val)
+        f.write('#define SYM_EOF %d\n'%SymEof.val)
+        f.write('#define SYM_EPSILON %d\n'%SymEpsilon.val)
         for nt in sorted(self.g.sym.values()):
             if not isinstance(nt, NonTerminal):
                 continue
@@ -76,7 +76,7 @@ class LLGen(object):
         f.write('{\n')
         f.write('\tswitch(sym) {\n')
         for nt in sorted(self.g.sym.values()):
-            f.write('\tcase %s:\n'%(nt.cname()))
+            f.write('\tcase %s:\n'%(nt.cname))
             f.write('\t\treturn "%s";\n'%(nt.name))
         f.write('\tcase SYM_EOF:\n')
         f.write('\t\treturn "EOF";\n')

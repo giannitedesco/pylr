@@ -16,7 +16,7 @@ def recurse(nt, node, g):
         g.symbol(s)
         p = Production(s)
         p.rule(op)
-        p.rule([SymEpsilon()])
+        p.rule([SymEpsilon])
         g.production(p)
         return [p.nt]
     elif isinstance(node, AstClosure):
@@ -147,9 +147,9 @@ class Grammar(object):
         return make_grammar(nonterminals, rules)
 
     def augment(self, start_sym):
-        self.symbol(SymStart())
-        self.production(Production(SymStart(),
-                [self[start_sym], SymEof()]))
+        self.symbol(SymStart)
+        self.production(Production(SymStart,
+                [self[start_sym], SymEof]))
 
     def symbol(self, sym):
         if isinstance(sym, Terminal):
@@ -194,7 +194,7 @@ class Grammar(object):
             if isinstance(s, NonTerminal) and \
                     s.name not in self.p:
                 print('ADDING MARKER', s.name)
-                self.p[s.name] = Production(s, [SymEpsilon()])
+                self.p[s.name] = Production(s, [SymEpsilon])
 
     def remove_singletons(self):
         "remove artefacts from bnf conversion"
@@ -226,7 +226,7 @@ class Grammar(object):
             for nt in list(self.reachables()):
                 if not isinstance(nt, NonTerminal):
                     continue
-                if not nt.is_prime():
+                if not nt.is_prime:
                     continue
                 if nt.name not in self.p:
                     continue
@@ -323,7 +323,7 @@ class Grammar(object):
 
         def erules(rcopy):
             for (l,r) in rcopy:
-                if len(r) == 1 and r[0] is SymEpsilon():
+                if len(r) == 1 and r[0] is SymEpsilon:
                     yield l
         e = frozenset(erules(rcopy))
 
@@ -347,7 +347,7 @@ class Grammar(object):
 
         # FIXME: if StartSym -> epsilon, then keep it
         def f(r):
-            nr = len(r) == 1 and r[0] is SymEpsilon()
+            nr = len(r) == 1 and r[0] is SymEpsilon
             return not nr
 
         for nt, p in list(self.p.items()):
@@ -460,7 +460,7 @@ class Grammar(object):
 
         for alpha in lr:
             np.rule(alpha[1:] + [prime])
-        np.rule([SymEpsilon()])
+        np.rule([SymEpsilon])
 
         #print np.nt.name, '->', np.rules
         #print p.nt.name, '->', p.rules
@@ -472,7 +472,7 @@ class Grammar(object):
         if s is None:
             s = set()
         if start is None:
-            start = self.p[SymStart().name].nt
+            start = self.p[SymStart.name].nt
 
         if start in s:
             return
@@ -496,7 +496,7 @@ class Grammar(object):
             if s is None:
                 s = set()
             if start is None:
-                start = self.p[SymStart().name].nt
+                start = self.p[SymStart.name].nt
 
             if start in s:
                 return
@@ -643,7 +643,7 @@ class Grammar(object):
                     if n:
                         new_rules.append(r[plen:])
                     else:
-                        new_rules.append([SymEpsilon()])
+                        new_rules.append([SymEpsilon])
                 else:
                     old_rules.append(r)
 
@@ -740,9 +740,9 @@ class Grammar(object):
                     n = r[i + 1]
                     if isinstance(n, NonTerminal):
                         tmp = self.FIRST[n.name]
-                        if SymEpsilon() in tmp:
+                        if SymEpsilon in tmp:
                             rec.append(n)
-                        s |= tmp - set([SymEpsilon()])
+                        s |= tmp - set([SymEpsilon])
                     else:
                         s |= set([n])
             f[nt.name] = s
@@ -756,7 +756,7 @@ class Grammar(object):
             if not isinstance(nt, NonTerminal):
                 continue
             do_FOLLOW(nt, f)
-        f['S'] = set([SymEof()])
+        f['S'] = set([SymEof])
 
         # not quite right
         #for k, v in sorted(f.items()):

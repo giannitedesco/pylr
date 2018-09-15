@@ -16,12 +16,12 @@ class TokItem(StackItem):
 ''', file=f)
 
 def write_sym_defs(lr, f):
-    print('    SYM_EOF = %d'%SymEof().val, file=f)
-    print('    SYM_EPSILON = %d'%SymEpsilon().val, file=f)
+    print('    SYM_EOF = %d'%SymEof.val, file=f)
+    print('    SYM_EPSILON = %d'%SymEpsilon.val, file=f)
     for nt in sorted(lr.lang.reachables):
         if not isinstance(nt, NonTerminal):
             continue
-        print('    %s = %d'%(nt.cname(), nt.val), file=f)
+        print('    %s = %d'%(nt.cname, nt.val), file=f)
     
     print('    __names= {', file=f)
     for nt in sorted(lr.lang.reachables):

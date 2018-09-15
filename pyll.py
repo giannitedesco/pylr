@@ -33,7 +33,7 @@ def read_productions(g, fn):
         assert(l[1] == '->')
         pnt = g.get(l[0])
         if not l[2:]:
-            r = [SymEpsilon()]
+            r = [SymEpsilon]
         else:
             r = list(map(g.get, l[2:]))
         p = Production(pnt, r)

@@ -121,7 +121,7 @@ class LR1(LR0):
     def start_item(self):
         s = self.lang.p['S']
         return Item(s.rules[0], head = s.nt, pos = 0,
-                lookahead = SymEof())
+                lookahead = SymEof)
 
     def reduce_symbols(self, item):
         return [item.lookahead]
@@ -138,8 +138,8 @@ class LR1(LR0):
                 try:
                     beta = j[j.pos + 1]
                 except IndexError:
-                    beta = SymEpsilon()
-                if beta is not SymEpsilon():
+                    beta = SymEpsilon
+                if beta is not SymEpsilon:
                     if isinstance(beta, NonTerminal):
                         ff = self.lang.FIRST[beta.name]
                     else:
@@ -190,7 +190,7 @@ class LALR1(LR1):
             print(' - do a set with', len(K), 'items')
             for k in K:
                 if k.is_start():
-                    k.lookahead = SymEof()
+                    k.lookahead = SymEof
             #self.generate_lookaheads(inum, K)
             for x in self.closure(K):
                 print(x)
@@ -239,14 +239,14 @@ class LALR1(LR1):
 class Item(tuple):
     def __new__(cls, arg = (), **kwargs):
         if arg:
-            if arg[-1] is SymEof():
+            if arg[-1] is SymEof:
                 arg = arg[:-1]
-            elif len(arg) == 1 and arg[0] == SymEpsilon():
+            elif len(arg) == 1 and arg[0] == SymEpsilon:
                 arg = []
         if arg:
-            if arg[-1] is SymEof():
+            if arg[-1] is SymEof:
                 arg = arg[:-1]
-            elif len(arg) == 1 and arg[0] == SymEpsilon():
+            elif len(arg) == 1 and arg[0] == SymEpsilon:
                 arg = []
         self = super().__new__(cls, arg)
         self.head = kwargs.pop('head')
@@ -295,7 +295,7 @@ class Item(tuple):
             ^ hash(self.head) \
             ^ hash(self.lookahead)
     def is_start(self):
-        if self.head is SymStart() and not self.pos:
+        if self.head is SymStart and not self.pos:
             return True
         return False
 
@@ -397,9 +397,9 @@ class LRGen(object):
             return '%s__FROM__%s'%(t, '_'.join(f))
 
         def do_reduce(r):
-            if len(r) == 1 and r[0] is SymEpsilon():
+            if len(r) == 1 and r[0] is SymEpsilon:
                 return
-            if r.head is SymStart():
+            if r.head is SymStart:
                 return
 
             n = prod_name(r)
@@ -419,7 +419,7 @@ class LRGen(object):
 
         for (I, inum) in list(self.C.state_number.items()):
             if self.C.end_item() in I:
-                key = (inum, SymEof())
+                key = (inum, SymEof)
                 val = ('accept', True)
                 handle_conflict(key, val)
 
