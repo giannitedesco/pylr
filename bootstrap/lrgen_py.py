@@ -3,17 +3,19 @@ from .symbol import *
 def write_stack_item(f):
     print(file=f)
     print('''class StackItem(object):
+    __slots__ = ('st',)
     def __init__(self, st):
         super(StackItem, self).__init__()
         self.st = st
+    def __str__(self):
+        return '%s(%s)'%(self.__class__.__name__, self.st)
     def __repr__(self):
-        return 'StackItem(%s)'%self.st
+        return str(self)
 class TokItem(StackItem):
+    __slots__ = ('tok',)
     def __init__(self, st, tok):
         super(TokItem, self).__init__(st)
-        self.tok = tok
-    def __repr__(self):
-        return 'TokItem(%s, %s)'%(self.st, self.tok.val)''', file=f)
+        self.tok = tok''', file=f)
 
 def write_sym_enum(lr, f):
     def line(sym):
@@ -41,15 +43,15 @@ def write_action_table(lr, f):
     print('    ACTION = {', file=f)
     for ((i,a), (c, v)) in sorted(lr.action.items()):
         if c == 'shift':
-            print('        (%d, %d): (\'shift\', %d),'%(\
-                    i, a.val, v), file=f)
+            print('        (%d, %s): (\'shift\', %d),'%(\
+                    i, a.pyname, v), file=f)
         elif c == 'reduce':
             index, r = v
-            print('        (%d, %d): (\'reduce\', %d),'%(\
-                    i, a.val, index), file=f)
+            print('        (%d, %s): (\'reduce\', %d),'%(\
+                    i, a.pyname, index), file=f)
         elif c == 'accept':
-            print('        (%d, %d): (\'accept\', None),'%(\
-                    i, a.val), file=f)
+            print('        (%d, %s): (\'accept\', None),'%(\
+                    i, a.pyname), file=f)
     print('    }', file=f)
 
 def write_sym_names(lr, f):
@@ -99,7 +101,7 @@ def write_parse_func(lr, f):
             toktype = tok.toktype
             akey = (self._stack_top().st, toktype)
             if not akey in self.ACTION:
-                raise Exception('Parse Error')
+                raise Exception('Parse Error %s'%(str(akey)))
             (a, v) = self.ACTION[akey]
 
             if a == 'accept':
