@@ -18,9 +18,9 @@ def write_tokens(dfa, f):
         print('    %s = %d'%(tn, i), file=f)
 
     d = {
-        'discard': 'lambda x: None',
-        'uint': 'lambda x: int(x, 0)',
-        'int': 'lambda x: int(x, 0)',
+        'discard': '_action_discard',
+        'uint': '_action_int',
+        'int': '_action_int',
         'str': 'str',
     }
 
@@ -38,6 +38,11 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
 
     print('# vim: set fileencoding=utf8 :', file=f)
     print('from enum import IntEnum', file=f)
+    print('from typing import NamedTuple, Any', file=f)
+    print('', file=f)
+
+    print('def _action_discard(x): return', file=f)
+    print('def _action_int(x): return int(x, 0)', file=f)
 
     write_tokens(dfa, f)
 
@@ -45,15 +50,20 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
         'initial_state':1,
     }
     print('''
-class Token(object):
-    def __init__(self, toktype, line, col, val = None):
-        super(Token, self).__init__()
-        self.toktype = toktype
-        self.line = line
-        self.col = col
-        self.val = val
+class Token(NamedTuple):
+    toktype : Tok
+    line : int
+    col : int
+    val : Any
 
-class Lexer(object):
+class Lexer:
+    __slots__ = (
+        'buf',
+        'state',
+        'line',
+        'col',
+        '_cb',
+    )
     initial_state = %(initial_state)d
 '''%d, file=f)
 
@@ -82,7 +92,7 @@ class Lexer(object):
         self.state = self.initial_state
         self.line = 1
         self.col = 0
-        self.cb = cb
+        self._cb = cb
 
     def next_state(self, old, sym):
         try:
@@ -93,8 +103,8 @@ class Lexer(object):
     def emit(self, toktype):
         val = _action[toktype](self.buf)
         tok = Token(toktype, self.line, self.col, val)
-        if self.cb is not None:
-            self.cb(tok)
+        if self._cb is not None:
+            self._cb(tok)
 
     def clear_buf(self):
         self.buf = ''

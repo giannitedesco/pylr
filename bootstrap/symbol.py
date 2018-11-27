@@ -66,6 +66,10 @@ class Terminal(Sym):
     def __hash__(self):
         return hash(tuple(self))
 
+    @property
+    def cname(self):
+        return self.basename
+
 class NonTerminal(Sym):
     prime_for = property(itemgetter(3))
 
