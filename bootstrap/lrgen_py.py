@@ -2,7 +2,7 @@ from .symbol import *
 
 def write_stack_item(f):
     print(file=f)
-    print('''class StackItem(object):
+    print('''class StackItem:
     __slots__ = ('st',)
     def __init__(self, st):
         super(StackItem, self).__init__()
@@ -77,16 +77,16 @@ def write_parse_func(lr, f):
     def _stack_top(self):
         assert(len(self.stack))
         return self.stack[-1]
-    
+
     def _push(self, item):
         assert(isinstance(item, StackItem))
         self.stack.append(item)
 
     def _multipop(self, cnt):
         if not cnt:
-            return []
+            return ()
         assert(len(self.stack) >= cnt)
-        ret = self.stack[-cnt:]
+        ret = tuple(self.stack[-cnt:])
         self.stack = self.stack[:-cnt]
         return ret
 
@@ -148,7 +148,7 @@ def lrgen_py(lr, name, srcdir, incdir):
     write_sym_enum(lr, f)
 
     print(file=f)
-    print('class Parser(object):', file=f)
+    print('class Parser:', file=f)
     print('    __slots__ = (\'stack\',)', file=f)
     print('    initial_state = %d'%lr.initial, file=f)
     print('', file=f)

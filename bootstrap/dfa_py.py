@@ -21,6 +21,7 @@ def write_tokens(dfa, f):
         'discard': '_action_discard',
         'uint': '_action_int',
         'int': '_action_int',
+        'numeric': '_action_numeric',
         'str': 'str',
     }
 
@@ -43,6 +44,15 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
 
     print('def _action_discard(x): return', file=f)
     print('def _action_int(x): return int(x, 0)', file=f)
+    print('def _action_numeric(x):', file=f)
+    print('    try:', file=f)
+    print('        f = float(x)', file=f)
+    print('        if f.is_integer():', file=f)
+    print('            return int(f)', file=f)
+    print('        else:', file=f)
+    print('            return f', file=f)
+    print('    except ValueError:', file=f)
+    print('        return _actioN_int(x)', file=f)
 
     write_tokens(dfa, f)
 
