@@ -26,7 +26,7 @@ def write_tokens(dfa, f):
     }
 
     print(file=f)
-    print('_action = {', file=f)
+    print('_action: Dict[Tok, Callable[[str], Any]] = {', file=f)
     print('    Tok.EOF: %s,'%(d['discard']), file=f)
     for i, tok in enumerate(s, 1):
         tn = '%s'%tok.rule_name.upper().replace(' ', '_')
@@ -38,6 +38,7 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
     f = open(fn, 'w')
 
     print('# vim: set fileencoding=utf8 :', file=f)
+    print('from typing import Dict, Callable', file=f)
     print('from enum import IntEnum', file=f)
     print('from typing import NamedTuple, Any', file=f)
     print('', file=f)
@@ -52,7 +53,7 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
     print('        else:', file=f)
     print('            return f', file=f)
     print('    except ValueError:', file=f)
-    print('        return _actioN_int(x)', file=f)
+    print('        return _action_int(x)', file=f)
 
     write_tokens(dfa, f)
 

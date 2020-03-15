@@ -110,7 +110,11 @@ def write_parse_func(lr, f):
                     raise Exception('bad accept')
                 assert(not self.stack)
                 self._accept(root[1])
-            elif a == 'shift':
+                return
+
+            assert(v is not None)
+
+            if a == 'shift':
                 self._push(TokItem(v, tok))
                 if toktype == Sym.EOF:
                     continue
