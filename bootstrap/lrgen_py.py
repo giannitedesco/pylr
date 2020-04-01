@@ -2,17 +2,23 @@ from .symbol import *
 
 def write_stack_item(f):
     print(file=f)
-    print('''class StackItem:
+    print('''\nclass StackItem:
     __slots__ = ('st',)
+
     def __init__(self, st):
         super(StackItem, self).__init__()
         self.st = st
+
     def __str__(self):
-        return '%s(%s)'%(self.__class__.__name__, self.st)
+        return f'{self.__class__.__name__}({self.st})'
+
     def __repr__(self):
         return str(self)
+
+
 class TokItem(StackItem):
     __slots__ = ('tok',)
+
     def __init__(self, st, tok):
         super(TokItem, self).__init__(st)
         self.tok = tok''', file=f)
@@ -35,7 +41,7 @@ def write_production_table(lr, f):
     for v, k in sorted([(v, k) for (k, v) in \
                 list(lr.productions.items())]):
         (index, plen, head) = v
-        print('        %s: (%d, %s), # %s'%(index, plen, head.pyname, k),
+        print('        %s: (%d, %s),'%(index, plen, head.pyname),
                 file=f)
     print('    }\n', file=f)
 
@@ -100,8 +106,8 @@ def write_parse_func(lr, f):
         while True:
             toktype = tok.toktype
             akey = (self._stack_top().st, toktype)
-            if not akey in self.ACTION:
-                raise Exception('Parse Error %s'%(str(akey)))
+            if akey not in self.ACTION:
+                raise Exception(f'Parse Error {akey}')
             (a, v) = self.ACTION[akey]
 
             if a == 'accept':
@@ -122,7 +128,7 @@ def write_parse_func(lr, f):
                 (l, head) = self.productions[v]
                 args = self._multipop(l)
                 gkey = (self._stack_top().st, head)
-                if not gkey in self.GOTO:
+                if gkey not in self.GOTO:
                     raise Exception('GOTO Error')
                 j = self.GOTO[gkey]
                 self._dispatch(head, args, j)
@@ -147,12 +153,12 @@ def lrgen_py(lr, name, srcdir, incdir):
     write_stack_item(f)
 
     print(file=f)
-    print('class Sym(IntEnum):', file=f)
+    print('\nclass Sym(IntEnum):', file=f)
     write_sym_enum(lr, f)
 
     print(file=f)
-    print('class Parser:', file=f)
-    print('    __slots__ = (\'stack\',)', file=f)
+    print('\nclass Parser:', file=f)
+    print('    __slots__ = (\'stack\',)\n', file=f)
     print('    initial_state = %d'%lr.initial, file=f)
     print('', file=f)
 

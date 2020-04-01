@@ -42,10 +42,12 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
     print('from typing import Dict, Callable', file=f)
     print('from enum import IntEnum', file=f)
     print('from typing import NamedTuple, Any', file=f)
-    print('', file=f)
+    print('\n', file=f)
 
-    print('def _action_discard(x): return', file=f)
-    print('def _action_int(x): return int(x, 0)', file=f)
+    print('def _action_discard(x):\n    return', file=f)
+    print('\n', file=f)
+    print('def _action_int(x):\n    return int(x, 0)', file=f)
+    print('\n', file=f)
     print('def _action_numeric(x):', file=f)
     print('    try:', file=f)
     print('        f = float(x)', file=f)
@@ -55,6 +57,7 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
     print('            return f', file=f)
     print('    except ValueError:', file=f)
     print('        return _action_int(x)', file=f)
+    print('', file=f)
 
     write_tokens(dfa, f)
 
