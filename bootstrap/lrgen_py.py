@@ -130,9 +130,7 @@ def write_parse_func(lr, f):
             else:
                 raise Exception('bad action')
 
-            return
-
-''', file=f)
+            return''', file=f)
 
 # This should be the rule class, remove pos
 def lrgen_py(lr, name, srcdir, incdir):

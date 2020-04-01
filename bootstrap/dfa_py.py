@@ -171,7 +171,6 @@ class Lexer:
                 self.symbol(x)
     def lex_buf(self, s):
         for x in s:
-            self.symbol(x)
-'''%d, file=f)
+            self.symbol(x)'''%d, file=f)
 
     f.close()
