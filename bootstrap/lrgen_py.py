@@ -69,8 +69,7 @@ def write_sym_names(lr, f):
         try:
             return Sym(key)
         except KeyError:
-            pass
-''', file=f)
+            pass''', file=f)
 
 def write_init(lr, f):
     print('    def __init__(self):', file=f)

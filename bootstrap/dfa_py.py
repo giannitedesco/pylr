@@ -26,6 +26,7 @@ def write_tokens(dfa, f):
     }
 
     print(file=f)
+    print(file=f)
     print('_action: Dict[Tok, Callable[[str], Any]] = {', file=f)
     print('    Tok.EOF: %s,'%(d['discard']), file=f)
     for i, tok in enumerate(s, 1):
@@ -65,11 +66,13 @@ def dfa_py(dfa, base_name, srcdir, includedir, table):
         'initial_state':1,
     }
     print('''
+
 class Token(NamedTuple):
-    toktype : Tok
-    line : int
-    col : int
-    val : Any
+    toktype: Tok
+    line: int
+    col: int
+    val: Any
+
 
 class Lexer:
     __slots__ = (
@@ -154,7 +157,7 @@ class Lexer:
             self.to_buf(sym)
         else:
             if old == self.initial_state:
-                es = 'unexpected \\\\x%%.2x(%%c)'%%(ord(sym), sym)
+                es = f'unexpected \\\\x{ord(sym):02x}({sym})'
                 raise Exception(es)
             else:
                 self.state = self.initial_state
@@ -173,6 +176,7 @@ class Lexer:
                 return
             for x in s:
                 self.symbol(x)
+
     def lex_buf(self, s):
         for x in s:
             self.symbol(x)'''%d, file=f)
